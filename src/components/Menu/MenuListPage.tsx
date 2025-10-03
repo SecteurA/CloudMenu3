@@ -355,11 +355,10 @@ export default function MenuListPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             to={`/categories/${menu.id}`}
-                            className="px-3 py-1.5 bg-orange-600 text-white hover:bg-orange-700 rounded text-sm font-medium flex items-center gap-1.5 shadow-sm"
+                            className="p-2 text-gray-600 hover:bg-gray-50 rounded"
                             title="Gérer les articles"
                           >
-                            <List size={16} />
-                            <span>Articles</span>
+                            <List size={18} />
                           </Link>
                           <Link
                             to={`/mon-menu/${menu.id}`}

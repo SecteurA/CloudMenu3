@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings } from 'lucide-react';
 import { supabase, Menu, Category, MenuItem, CategoryInsert, MenuItemInsert, MenuItemUpdate, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -560,6 +560,13 @@ export default function MenuManagement() {
             >
               <Wand2 size={18} />
               <span>Import IA</span>
+            </Link>
+            <Link
+              to={`/mon-menu/${menuId}`}
+              className="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
+            >
+              <Settings size={18} />
+              <span>Paramètres</span>
             </Link>
             <a
               href={`/m/${menu.slug}`}
