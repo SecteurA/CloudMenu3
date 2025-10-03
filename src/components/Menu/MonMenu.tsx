@@ -415,58 +415,6 @@ const MonMenu = () => {
                 />
               </div>
 
-              {hasRestaurantProfile && isNewMenu && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL de votre menu
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <span className="bg-gray-50 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500">
-                      cloudmenu.fr/m/
-                    </span>
-                    <input
-                      type="text"
-                      value={menuConfig.slug}
-                      disabled
-                      className="px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
-                    />
-                    <span className="text-gray-500">/</span>
-                    <input
-                      type="text"
-                      value={menuConfig.menu_name ? generateSlug(menuConfig.menu_name) : ''}
-                      disabled
-                      placeholder="nom-du-menu"
-                      className="flex-1 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Le nom du restaurant est fixe. Seul le nom du menu détermine l'URL finale.
-                  </p>
-                </div>
-              )}
-
-              {existingMenu && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL de votre menu
-                  </label>
-                  <div className="flex items-center">
-                    <span className="bg-gray-50 px-3 py-3 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
-                      cloudmenu.fr/m/
-                    </span>
-                    <input
-                      type="text"
-                      value={menuConfig.slug}
-                      disabled
-                      className="flex-1 px-2 sm:px-3 py-1 border border-gray-300 rounded-r-md text-xs sm:text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    🔒 L'URL ne peut pas être modifiée après la création (utilisée pour le QR code)
-                  </p>
-                </div>
-              )}
-
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   Bannière

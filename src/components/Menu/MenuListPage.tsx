@@ -324,9 +324,6 @@ export default function MenuListPage() {
                             <div className="font-medium text-gray-900">
                               {menu.menu_name || menu.nom}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              cloudmenu.fr/m/{menu.slug}
-                            </div>
                           </div>
                         </div>
                       </td>
