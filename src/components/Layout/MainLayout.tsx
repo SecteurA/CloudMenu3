@@ -1,6 +1,7 @@
 import React, { useState, memo, useCallback } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import PageTransition from './PageTransition';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -23,25 +24,27 @@ const MainLayout = memo(({ children, currentPage }: MainLayoutProps) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onMenuToggle={toggleSidebar} />
-      
-      <Sidebar 
-        currentPage={currentPage} 
+
+      <Sidebar
+        currentPage={currentPage}
         isOpen={sidebarOpen}
         onClose={closeSidebar}
       />
-      
+
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 lg:hidden"
+        <div
+          className="fixed inset-0 bg-black/50 z-20 lg:hidden transition-opacity duration-200"
           onClick={handleOverlayClick}
         />
       )}
-      
+
       {/* Main content */}
       <main className="lg:ml-64 pt-16 transition-all duration-300">
         <div className="p-3 sm:p-4 md:p-6">
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </div>
       </main>
     </div>

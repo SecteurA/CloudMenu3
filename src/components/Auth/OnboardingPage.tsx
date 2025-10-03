@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Upload, Loader2, Check, X, AlertCircle, Camera, Phone, MessageCircle, Instagram, Facebook } from 'lucide-react';
-import { supabase, MenuInsert, generateSlug, checkSlugAvailability, uploadImage, deleteImage } from '../../lib/supabase';
+import { supabase, RestaurantProfileInsert, generateSlug, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 const OnboardingPage = () => {
@@ -13,15 +13,18 @@ const OnboardingPage = () => {
   
   // États pour le formulaire
   const [formData, setFormData] = useState({
-    nom: '',
+    restaurant_name: '',
     description: '',
     slug: '',
-    banniere_url: '',
+    banner_url: '',
+    logo_url: '',
     telephone: '',
     whatsapp: '',
     instagram: '',
     facebook: '',
-    tiktok: ''
+    tiktok: '',
+    address: '',
+    hours: ''
   });
 
   // États pour la validation du slug
@@ -31,55 +34,49 @@ const OnboardingPage = () => {
 
   const totalSteps = 3;
 
-  // Vérifier si l'utilisateur a déjà un menu
+  // Vérifier si l'utilisateur a déjà un profil restaurant
   useEffect(() => {
     if (user) {
-      checkExistingMenu();
+      checkExistingProfile();
     }
   }, [user]);
 
-  // Générer le slug automatiquement et vérifier sa disponibilité
+  // Générer le slug automatiquement
   useEffect(() => {
-    const checkSlug = async () => {
-      if (formData.nom.trim()) {
-        const newSlug = generateSlug(formData.nom);
+    const generateSlugFromName = () => {
+      if (formData.restaurant_name.trim()) {
+        const newSlug = generateSlug(formData.restaurant_name);
         setFormData(prev => ({ ...prev, slug: newSlug }));
-        
-        if (newSlug) {
-          setSlugChecking(true);
-          const available = await checkSlugAvailability(newSlug);
-          setSlugAvailable(available);
-          setSlugChecking(false);
-        }
+        setSlugAvailable(true); // Always available for restaurant profiles
       } else {
         setFormData(prev => ({ ...prev, slug: '' }));
         setSlugAvailable(null);
       }
     };
 
-    const debounceTimeout = setTimeout(checkSlug, 500);
+    const debounceTimeout = setTimeout(generateSlugFromName, 500);
     return () => clearTimeout(debounceTimeout);
-  }, [formData.nom]);
+  }, [formData.restaurant_name]);
 
-  const checkExistingMenu = async () => {
+  const checkExistingProfile = async () => {
     try {
       const { data, error } = await supabase
-        .from('menus')
+        .from('restaurant_profiles')
         .select('id')
         .eq('user_id', user!.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Erreur lors de la vérification du menu:', error);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erreur lors de la vérification du profil:', error);
         return;
       }
 
       if (data) {
-        // L'utilisateur a déjà un menu, rediriger vers le dashboard
+        // L'utilisateur a déjà un profil, rediriger vers le dashboard
         navigate('/', { replace: true });
       }
     } catch (error) {
-      console.error('Erreur lors de la vérification du menu:', error);
+      console.error('Erreur lors de la vérification du profil:', error);
     }
   };
 
@@ -92,12 +89,12 @@ const OnboardingPage = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = async (file: File, type: 'logo' | 'banniere') => {
-    if (!file) return;
+  const handleImageUpload = async (file: File, type: 'logo' | 'banner') => {
+    if (!file || !user) return;
 
-    const maxSize = type === 'logo' ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxSize = 5 * 1024 * 1024; // 5MB
     if (file.size > maxSize) {
-      showMessage('error', `Le fichier est trop volumineux (max ${type === 'logo' ? '2MB' : '5MB'})`);
+      showMessage('error', 'Le fichier est trop volumineux (max 5MB)');
       return;
     }
 
@@ -106,27 +103,16 @@ const OnboardingPage = () => {
       return;
     }
 
-    const uploadingSetter = type === 'logo' ? setUploadingLogo : setUploadingBanner;
-    uploadingSetter(true);
-    
+    setUploadingBanner(true);
+
     try {
-      const oldUrl = formData.banniere_url;
-      if (oldUrl) {
-        await deleteImage(oldUrl);
-      }
+      const folder = type === 'banner' ? 'banners' : 'logos';
+      const imageUrl = await uploadImage(file, user.id, folder);
 
-      const folder = 'bannieres';
-      const result = await uploadImage(file, folder);
-      
-      if (result.error) {
-        showMessage('error', result.error);
-        return;
-      }
+      const field = type === 'banner' ? 'banner_url' : 'logo_url';
+      handleInputChange(field, imageUrl);
 
-      const field = 'banniere_url';
-      handleInputChange(field, result.url);
-      
-      showMessage('success', 'Bannière uploadée avec succès');
+      showMessage('success', `${type === 'banner' ? 'Bannière' : 'Logo'} uploadé avec succès`);
     } catch (error) {
       showMessage('error', 'Erreur lors de l\'upload');
     } finally {
@@ -137,7 +123,7 @@ const OnboardingPage = () => {
   const canProceedToNextStep = () => {
     switch (currentStep) {
       case 1:
-        return formData.nom.trim() && formData.slug && slugAvailable === true;
+        return formData.restaurant_name.trim() && formData.slug && slugAvailable === true;
       case 2:
         return true; // Images optionnelles
       case 3:
@@ -163,44 +149,40 @@ const OnboardingPage = () => {
     if (!user) return;
 
     setLoading(true);
-    
+
     try {
-      const insertData: MenuInsert = {
+      const insertData: RestaurantProfileInsert = {
         user_id: user.id,
-        nom: formData.nom,
-        description: formData.description,
+        restaurant_name: formData.restaurant_name,
         slug: formData.slug,
-        banniere_url: formData.banniere_url,
+        description: formData.description,
+        banner_url: formData.banner_url,
+        logo_url: formData.logo_url,
         telephone: formData.telephone,
         whatsapp: formData.whatsapp,
         instagram: formData.instagram,
         facebook: formData.facebook,
         tiktok: formData.tiktok,
-        couleur_primaire: '#f97316',
-        couleur_secondaire: '#1f2937',
-        couleur_texte: '#374151',
-        couleur_fond: '#ffffff',
-        afficher_powered_by: true,
-        lien_cloudmenu: true,
-        actif: true
+        address: formData.address,
+        hours: formData.hours
       };
 
       const { error } = await supabase
-        .from('menus')
+        .from('restaurant_profiles')
         .insert([insertData]);
 
       if (error) throw error;
-      
-      showMessage('success', 'Menu créé avec succès ! Bienvenue sur CloudMenu ! 🎉');
-      
+
+      showMessage('success', 'Restaurant créé avec succès ! Bienvenue sur CloudMenu ! 🎉');
+
       // Rediriger vers le dashboard après 2 secondes
       setTimeout(() => {
         navigate('/', { replace: true });
       }, 2000);
-      
+
     } catch (error) {
-      console.error('Erreur lors de la création du menu:', error);
-      showMessage('error', 'Erreur lors de la création du menu');
+      console.error('Erreur lors de la création du restaurant:', error);
+      showMessage('error', 'Erreur lors de la création du restaurant');
     } finally {
       setLoading(false);
     }
@@ -226,10 +208,16 @@ const OnboardingPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <img 
-            src="https://pub-f75ac4351c874e6f945cfc0ccd7d6d35.r2.dev/CloudMenu/CloudMenu.svg" 
-            alt="CloudMenu" 
+        <div className="text-center mb-8 relative">
+          <button
+            onClick={() => navigate('/', { replace: true })}
+            className="absolute right-0 top-0 text-gray-600 hover:text-gray-900 text-sm font-medium underline"
+          >
+            Passer cette étape
+          </button>
+          <img
+            src="https://pub-f75ac4351c874e6f945cfc0ccd7d6d35.r2.dev/CloudMenu/CloudMenu.svg"
+            alt="CloudMenu"
             className="h-12 mx-auto mb-6"
           />
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -303,12 +291,12 @@ const OnboardingPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nom de l'établissement *
+                  Nom du restaurant *
                 </label>
                 <input
                   type="text"
-                  value={formData.nom}
-                  onChange={(e) => handleInputChange('nom', e.target.value)}
+                  value={formData.restaurant_name}
+                  onChange={(e) => handleInputChange('restaurant_name', e.target.value)}
                   placeholder="ex: Chez Antoine, Pizza Roma, Le Bistrot..."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"
                 />
@@ -316,7 +304,7 @@ const OnboardingPage = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  URL de votre menu
+                  URL de votre restaurant
                 </label>
                 <div className="flex items-center">
                   <span className="bg-gray-50 px-3 py-3 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
@@ -385,18 +373,18 @@ const OnboardingPage = () => {
               {/* Bannière */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Bannière de l'établissement
+                  Bannière du restaurant
                 </label>
                 <div className="space-y-3">
-                  {formData.banniere_url && (
+                  {formData.banner_url && (
                     <div className="relative">
-                      <img 
-                        src={formData.banniere_url} 
-                        alt="Bannière" 
+                      <img
+                        src={formData.banner_url}
+                        alt="Bannière"
                         className="w-full h-32 object-cover rounded-lg border border-gray-200"
                       />
                       <button
-                        onClick={() => handleInputChange('banniere_url', '')}
+                        onClick={() => handleInputChange('banner_url', '')}
                         className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
                         <X size={12} />
@@ -409,7 +397,7 @@ const OnboardingPage = () => {
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file, 'banniere');
+                        if (file) handleImageUpload(file, 'banner');
                       }}
                       className="hidden"
                       disabled={uploadingBanner}
@@ -561,7 +549,7 @@ const OnboardingPage = () => {
                 ) : (
                   <Check size={20} />
                 )}
-                <span>{loading ? 'Création...' : 'Créer mon menu'}</span>
+                <span>{loading ? 'Création...' : 'Créer mon restaurant'}</span>
               </button>
             )}
           </div>

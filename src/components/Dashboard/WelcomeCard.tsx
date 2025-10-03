@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { QrCode, Eye, TrendingUp, Building } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { QrCode, Eye, TrendingUp, Building, Download } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import VisitTrendChart from './VisitTrendChart';
+import QRCodeLib from 'qrcode';
 
 interface VisitData {
   date: string;
@@ -26,6 +27,10 @@ const WelcomeCard = () => {
   ]);
   const [loading, setLoading] = useState(true);
   const [dataLoadedAt, setDataLoadedAt] = useState<number>(0);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [restaurantName, setRestaurantName] = useState<string>('');
+  const [menuSlug, setMenuSlug] = useState<string>('');
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (user) {
@@ -35,6 +40,7 @@ const WelcomeCard = () => {
         setDataLoadedAt(now);
         loadStats();
         loadVisitTrendData();
+        loadQRCode();
       }
     }
   }, [user, timeRange, dataLoadedAt]);
@@ -65,28 +71,29 @@ const WelcomeCard = () => {
 
     setChartLoading(true);
     try {
-      // Get user's menu
-      const { data: menu, error: menuError } = await supabase
+      // Get all user's menus
+      const { data: menus, error: menuError } = await supabase
         .from('menus')
         .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .eq('user_id', user.id);
 
-      if (menuError || !menu) {
+      if (menuError || !menus || menus.length === 0) {
         setVisitTrendData([]);
         return;
       }
+
+      const menuIds = menus.map(m => m.id);
 
       // Calculate date range
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(timeRange));
 
-      // Get analytics data for the specified range
+      // Get analytics data for all menus in the specified range
       const { data: analyticsData, error: analyticsError } = await supabase
         .from('menu_analytics')
         .select('visit_type, visited_at')
-        .eq('menu_id', menu.id)
+        .in('menu_id', menuIds)
         .gte('visited_at', startDate.toISOString())
         .lte('visited_at', endDate.toISOString())
         .order('visited_at', { ascending: true });
@@ -151,28 +158,19 @@ const WelcomeCard = () => {
     if (document.hidden) return;
 
     try {
-      // Get user's menu
-      const { data: menu, error: menuError } = await supabase
+      // Get all user's menus
+      const { data: menus, error: menuError } = await supabase
         .from('menus')
         .select('id')
-        .eq('user_id', user!.id)
-        .maybeSingle();
+        .eq('user_id', user!.id);
 
-      if (menuError || !menu) {
+      if (menuError || !menus || menus.length === 0) {
         setStats(prev => prev.map(stat => ({ ...stat, value: '0', change: 'Aucune donnée' })));
         setLoading(false);
         return;
       }
 
-      // Get menu items count
-      const { data: menuItems, error: itemsError } = await supabase
-        .from('menu_items')
-        .select('id, disponible, categories!inner(menu_id)')
-        .eq('categories.menu_id', menu.id);
-
-      if (itemsError) {
-        console.warn('Error loading menu items:', itemsError);
-      }
+      const menuIds = menus.map(m => m.id);
 
       // Get analytics data
       const now = new Date();
@@ -180,14 +178,14 @@ const WelcomeCard = () => {
       const weekAgo = new Date(today);
       weekAgo.setDate(weekAgo.getDate() - 7);
 
-      // Total views
+      // Total views - query all menus
       const promises = [
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id),
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id).eq('visit_type', 'qr_scan'),
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id).eq('visit_type', 'gmb'),
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id).eq('visit_type', 'qr_scan').gte('visited_at', today.toISOString()),
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id).eq('visit_type', 'gmb').gte('visited_at', today.toISOString()),
-        supabase.from('menu_analytics').select('id').eq('menu_id', menu.id).gte('visited_at', weekAgo.toISOString())
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds),
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds).eq('visit_type', 'qr_scan'),
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds).eq('visit_type', 'gmb'),
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds).eq('visit_type', 'qr_scan').gte('visited_at', today.toISOString()),
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds).eq('visit_type', 'gmb').gte('visited_at', today.toISOString()),
+        supabase.from('menu_analytics').select('id').in('menu_id', menuIds).gte('visited_at', weekAgo.toISOString())
       ];
 
       const results = await Promise.allSettled(promises);
@@ -246,6 +244,63 @@ const WelcomeCard = () => {
     }
   };
 
+  const loadQRCode = async () => {
+    if (!user) return;
+
+    try {
+      // Get first menu and restaurant profile
+      const { data: menu, error: menuError } = await supabase
+        .from('menus')
+        .select('nom, slug')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (menuError || !menu) return;
+
+      const { data: profile } = await supabase
+        .from('restaurant_profiles')
+        .select('name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const name = profile?.name || menu.nom || 'Mon Restaurant';
+      const slug = menu.slug || menu.nom;
+
+      setRestaurantName(name);
+      setMenuSlug(slug);
+
+      // Generate QR code
+      const menuUrl = `${window.location.origin}/menu/${slug}?source=qr_scan`;
+
+      if (qrCanvasRef.current) {
+        await QRCodeLib.toCanvas(qrCanvasRef.current, menuUrl, {
+          width: 200,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          }
+        });
+
+        const dataUrl = qrCanvasRef.current.toDataURL();
+        setQrCodeUrl(dataUrl);
+      }
+    } catch (error) {
+      console.error('Error loading QR code:', error);
+    }
+  };
+
+  const downloadQRCode = () => {
+    if (qrCodeUrl) {
+      const link = document.createElement('a');
+      link.download = `${menuSlug}-qr-code.png`;
+      link.href = qrCodeUrl;
+      link.click();
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Welcome Card */}
@@ -256,22 +311,43 @@ const WelcomeCard = () => {
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
-                <p className={`text-xs ${stat.color} mt-1`}>{stat.change}</p>
+      {/* Stats Cards and QR Code */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Stats Cards - 2x2 Grid on Left */}
+        <div className="lg:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{stat.label}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+                    <p className={`text-xs ${stat.color} mt-1`}>{stat.change}</p>
+                  </div>
+                  <div className={`p-3 rounded-full bg-gray-100`}>
+                    <stat.icon size={24} className={stat.color} />
+                  </div>
+                </div>
               </div>
-              <div className={`p-3 rounded-full bg-gray-100`}>
-                <stat.icon size={24} className={stat.color} />
-              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* QR Code Card on Right */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 flex flex-col items-center justify-center">
+            <div className="bg-white p-4 rounded-lg border-2 border-gray-200">
+              <canvas ref={qrCanvasRef} style={{ display: 'none' }} />
+              {qrCodeUrl ? (
+                <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+              ) : (
+                <div className="w-48 h-48 flex items-center justify-center bg-gray-100 rounded">
+                  <QrCode size={48} className="text-gray-400" />
+                </div>
+              )}
             </div>
           </div>
-        ))}
+        </div>
       </div>
 
       {/* Visit Trend Chart */}

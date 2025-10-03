@@ -1,41 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Wand2, FileImage, Loader2, Check, X, ArrowLeft } from 'lucide-react';
 import { supabase, Menu, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import LoadingSpinner from '../Layout/LoadingSpinner';
 
 const AIMenuImport = () => {
   const { user } = useAuth();
+  const { menuId } = useParams<{ menuId: string }>();
   const navigate = useNavigate();
   const [menu, setMenu] = useState<Menu | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiParsing, setAiParsing] = useState(false);
   const [selectedMenuImage, setSelectedMenuImage] = useState<File | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [parseStep, setParseStep] = useState<string>('');
+  const [importImages, setImportImages] = useState<boolean>(true);
 
   useEffect(() => {
-    if (user) {
+    if (user && menuId) {
       loadUserMenu();
     }
-  }, [user]);
+  }, [user, menuId]);
 
   const loadUserMenu = async () => {
+    if (!menuId) {
+      showMessage('error', 'ID de menu manquant');
+      navigate('/mes-menus');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('menus')
         .select('*')
+        .eq('id', menuId)
         .eq('user_id', user!.id)
         .maybeSingle();
 
       if (error) {
         console.error('Erreur lors du chargement du menu:', error);
+        showMessage('error', 'Erreur lors du chargement du menu');
+        return;
+      }
+
+      if (!data) {
+        showMessage('error', 'Menu non trouvé');
+        navigate('/mes-menus');
         return;
       }
 
       setMenu(data);
     } catch (error) {
       console.error('Erreur lors du chargement du menu:', error);
+      showMessage('error', 'Erreur lors du chargement du menu');
     } finally {
       setLoading(false);
     }
@@ -74,6 +93,7 @@ const AIMenuImport = () => {
       }
 
       // Appeler l'Edge Function pour analyser l'image
+      setParseStep('Analyse de l\'image avec l\'IA...');
       showMessage('success', 'Analyse de l\'image avec l\'IA...');
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-menu-image`, {
         method: 'POST',
@@ -83,10 +103,12 @@ const AIMenuImport = () => {
         },
         body: JSON.stringify({
           imageUrl: uploadResult.url,
-          menuId: menu!.id
+          menuId: menu!.id,
+          importImages: importImages
         })
       });
 
+      setParseStep('Traitement de la réponse...');
       if (!response.ok) {
         const errorData = await response.json();
         showMessage('error', errorData.error || 'Erreur lors de l\'analyse');
@@ -100,8 +122,9 @@ const AIMenuImport = () => {
         return;
       }
 
+      setParseStep('Insertion des données en base...');
       // Insérer les données dans la base
-      showMessage('success', 'Insertion des données en base...');
+      showMessage('success', 'Insertion des données et images en base...');
       await insertParsedMenuData(result.data);
       
       // Clean up: delete the uploaded image used for analysis
@@ -124,6 +147,7 @@ const AIMenuImport = () => {
       showMessage('error', 'Erreur lors du traitement de l\'image');
     } finally {
       setAiParsing(false);
+      setParseStep('');
       setSelectedMenuImage(null);
     }
   };
@@ -166,6 +190,7 @@ const AIMenuImport = () => {
               nom: itemData.name,
               description: itemData.description || '',
               prix: itemData.price || 0,
+              image_url: itemData.image_url || '',
               allergenes: itemData.allergenes || [],
               vegetarien: itemData.vegetarian || false,
               vegan: itemData.vegan || false,
@@ -185,11 +210,8 @@ const AIMenuImport = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2 text-gray-600">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Chargement...</span>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -305,6 +327,24 @@ const AIMenuImport = () => {
             </label>
           </div>
 
+          {/* Import Images Checkbox */}
+          <div className="mb-6 flex items-center justify-center space-x-3 bg-white rounded-lg p-4">
+            <input
+              type="checkbox"
+              id="importImages"
+              checked={importImages}
+              onChange={(e) => setImportImages(e.target.checked)}
+              disabled={aiParsing}
+              className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer disabled:cursor-not-allowed"
+            />
+            <label
+              htmlFor="importImages"
+              className="text-gray-700 font-medium cursor-pointer select-none"
+            >
+              Importer automatiquement des images pour chaque plat
+            </label>
+          </div>
+
           {/* Action Button */}
           <div className="text-center">
             <button
@@ -333,13 +373,19 @@ const AIMenuImport = () => {
             <div className="bg-purple-100 rounded-xl p-6">
               <div className="flex items-center justify-center space-x-3 text-purple-700 mb-4">
                 <Loader2 className="animate-spin" size={20} />
-                <span className="font-medium">L'IA analyse votre menu...</span>
+                <span className="font-medium">{parseStep || 'L\'IA analyse votre menu...'}</span>
               </div>
               <div className="bg-purple-200 rounded-full h-2">
                 <div className="bg-purple-600 h-2 rounded-full animate-pulse" style={{ width: '75%' }}></div>
               </div>
               <p className="text-sm text-purple-600 mt-3 text-center">
-                Cela peut prendre quelques instants selon la complexité de votre menu
+                Cela peut prendre quelques minutes selon la complexité de votre menu et le nombre de plats
+                {importImages && (
+                  <>
+                    <br />
+                    <strong>Recherche automatique d'images pour chaque plat incluse !</strong>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -363,9 +409,9 @@ const AIMenuImport = () => {
             </div>
             <div className="bg-white rounded-lg p-4 text-center">
               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                <span className="text-purple-600 font-bold">💰</span>
+                <span className="text-purple-600 font-bold text-lg">✓</span>
               </div>
-              <p className="text-sm text-gray-600">Prix bien lisibles</p>
+              <p className="text-sm text-gray-600">Texte lisible sans reflets</p>
             </div>
           </div>
         </div>

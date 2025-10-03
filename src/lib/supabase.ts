@@ -13,20 +13,75 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
+// Types pour les profils restaurant
+export interface RestaurantProfile {
+  id: string;
+  user_id: string;
+  restaurant_name: string;
+  slug: string;
+  description: string;
+  banner_url: string;
+  logo_url: string;
+  telephone: string;
+  whatsapp: string;
+  instagram: string;
+  facebook: string;
+  tiktok: string;
+  address: string;
+  hours: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RestaurantProfileInsert {
+  user_id: string;
+  restaurant_name: string;
+  slug: string;
+  description?: string;
+  banner_url?: string;
+  logo_url?: string;
+  telephone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  address?: string;
+  hours?: string;
+}
+
+export interface RestaurantProfileUpdate {
+  restaurant_name?: string;
+  slug?: string;
+  description?: string;
+  banner_url?: string;
+  logo_url?: string;
+  telephone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  facebook?: string;
+  tiktok?: string;
+  address?: string;
+  hours?: string;
+}
+
 // Types pour les menus
 export interface Menu {
   id: string;
   user_id: string;
   nom: string;
+  menu_name: string;
   description: string;
   slug: string;
   banniere_url: string;
   couleur_primaire: string;
   couleur_secondaire: string;
+  couleur_texte: string;
   couleur_fond: string;
   afficher_powered_by: boolean;
   lien_cloudmenu: boolean;
   actif: boolean;
+  status: 'draft' | 'published';
+  language: string;
   created_at: string;
   updated_at: string;
   telephone: string;
@@ -39,6 +94,7 @@ export interface Menu {
 export interface MenuInsert {
   user_id: string;
   nom: string;
+  menu_name?: string;
   description?: string;
   slug: string;
   banniere_url?: string;
@@ -49,6 +105,8 @@ export interface MenuInsert {
   afficher_powered_by?: boolean;
   lien_cloudmenu?: boolean;
   actif?: boolean;
+  status?: 'draft' | 'published';
+  language?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -58,6 +116,7 @@ export interface MenuInsert {
 
 export interface MenuUpdate {
   nom?: string;
+  menu_name?: string;
   description?: string;
   slug?: string;
   couleur_primaire?: string;
@@ -67,6 +126,8 @@ export interface MenuUpdate {
   afficher_powered_by?: boolean;
   lien_cloudmenu?: boolean;
   actif?: boolean;
+  status?: 'draft' | 'published';
+  language?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;

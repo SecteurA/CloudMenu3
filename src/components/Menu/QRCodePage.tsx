@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Copy, Check, Loader2, QrCode, Palette, Link2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Download, Copy, Check, Loader2, QrCode, Palette, Link2, ArrowLeft } from 'lucide-react';
 import QRCode from 'qrcode';
-import { supabase, Menu } from '../../lib/supabase';
+import { supabase, Menu, RestaurantProfile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 const QRCodePage = () => {
   const { user } = useAuth();
-  const [menu, setMenu] = useState<Menu | null>(null);
+  const navigate = useNavigate();
+  const [restaurant, setRestaurant] = useState<RestaurantProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [qrCodeColor, setQrCodeColor] = useState('#000000');
@@ -26,43 +28,46 @@ const QRCodePage = () => {
 
   useEffect(() => {
     if (user) {
-      loadUserMenu();
+      loadRestaurantProfile();
     }
   }, [user]);
 
   useEffect(() => {
-    if (menu) {
+    if (restaurant) {
       generateQRCode();
     }
-  }, [menu, qrCodeColor, backgroundColor]);
+  }, [restaurant, qrCodeColor, backgroundColor]);
 
-  const loadUserMenu = async () => {
+  const loadRestaurantProfile = async () => {
+    if (!user) return;
+
+    setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('menus')
+        .from('restaurant_profiles')
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', user.id)
         .maybeSingle();
 
-      if (error) {
-        console.error('Erreur lors du chargement du menu:', error);
-        return;
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erreur lors du chargement du profil restaurant:', error);
+        throw error;
       }
 
-      setMenu(data);
+      setRestaurant(data);
     } catch (error) {
-      console.error('Erreur lors du chargement du menu:', error);
+      console.error('Erreur lors du chargement:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const generateQRCode = async () => {
-    if (!menu) return;
+    if (!restaurant) return;
 
     setGenerating(true);
     try {
-      const menuUrlWithTracking = `https://a.cloudmenu.fr/m/${menu.slug}?ref=qr`;
+      const menuUrlWithTracking = `https://a.cloudmenu.fr/m/${restaurant.slug}?ref=qr`;
       const dataUrl = await QRCode.toDataURL(menuUrlWithTracking, {
         width: 400,
         margin: 2,
@@ -72,7 +77,7 @@ const QRCodePage = () => {
         },
         errorCorrectionLevel: 'M'
       });
-      
+
       setQrCodeDataUrl(dataUrl);
     } catch (error) {
       console.error('Erreur lors de la génération du QR code:', error);
@@ -82,16 +87,16 @@ const QRCodePage = () => {
   };
 
   const downloadQRCode = () => {
-    if (!qrCodeDataUrl || !menu) return;
+    if (!qrCodeDataUrl || !restaurant) return;
 
     const link = document.createElement('a');
-    link.download = `qr-code-${menu.slug}.png`;
+    link.download = `qr-code-${restaurant.slug}.png`;
     link.href = qrCodeDataUrl;
     link.click();
   };
 
   const copyMenuLink = async () => {
-    if (!menu) return;
+    if (!restaurant) return;
 
     try {
       await navigator.clipboard.writeText(`${menuUrl}?ref=qr`);
@@ -118,46 +123,46 @@ const QRCodePage = () => {
     );
   }
 
-  if (!menu) {
+  if (!restaurant) {
     return (
       <div className="max-w-4xl mx-auto p-6">
         <div className="text-center py-12">
           <QrCode className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Configurez d'abord votre menu</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Profil restaurant non configuré</h2>
           <p className="text-gray-600 mb-6">
-            Vous devez d'abord configurer votre menu pour générer son QR code.
+            Vous devez d'abord configurer l'identité visuelle de votre restaurant pour générer un QR code.
           </p>
-          <button 
-            onClick={() => window.location.href = '/mon-menu'}
+          <button
+            onClick={() => navigate('/identite-visuelle')}
             className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700"
           >
-            Aller à la configuration
+            Configurer mon restaurant
           </button>
         </div>
       </div>
     );
   }
 
-  const menuUrl = `https://a.cloudmenu.fr/m/${menu.slug}`;
+  const menuUrl = restaurant ? `https://a.cloudmenu.fr/m/${restaurant.slug}` : '';
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
       {/* Header */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">QR Code de votre menu</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">QR Code du restaurant</h1>
         <p className="text-sm sm:text-base text-gray-600">
-          Téléchargez votre QR code personnalisé pour afficher dans votre établissement
+          Téléchargez votre QR code personnalisé pour afficher dans votre établissement. Il permet d'accéder à tous vos menus.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
         {/* Configuration Panel */}
         <div className="space-y-6">
-          {/* URL du menu */}
+          {/* URL du restaurant */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
               <Link2 className="w-5 h-5" />
-              <span>URL de votre menu</span>
+              <span>URL de votre restaurant</span>
             </h2>
             
             <div className="space-y-3">

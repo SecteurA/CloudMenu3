@@ -1,35 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Palette, 
-  Eye, 
-  Upload, 
-  Save, 
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Palette,
+  Eye,
+  Upload,
+  Save,
   Smartphone,
   ExternalLink,
   Info,
   Loader2,
   X,
-  Check
+  Check,
+  ArrowLeft
 } from 'lucide-react';
 import { supabase, Menu, MenuInsert, MenuUpdate, generateSlug, uploadImage, deleteImage } from '../../lib/supabase';
+import LoadingSpinner from '../Layout/LoadingSpinner';
 
 const MonMenu = () => {
+  const { menuId } = useParams<{ menuId: string }>();
+  const navigate = useNavigate();
+  const isNewMenu = menuId === undefined;
+  const [hasRestaurantProfile, setHasRestaurantProfile] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
   const [menuConfig, setMenuConfig] = useState({
     nom: '',
+    menu_name: '',
     description: '',
     slug: '',
     banniere_url: '',
+    language: 'fr',
+    status: 'published',
     couleur_primaire: '#f97316',
     couleur_secondaire: '#1f2937',
     couleur_texte: '#374151',
     couleur_fond: '#ffffff',
     afficher_powered_by: true,
-    lien_cloudmenu: true,
-    telephone: '',
-    whatsapp: '',
-    instagram: '',
-    facebook: '',
-    tiktok: ''
+    lien_cloudmenu: true
   });
 
   const [loading, setLoading] = useState(false);
@@ -37,12 +43,41 @@ const MonMenu = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [existingMenu, setExistingMenu] = useState<Menu | null>(null);
 
-  // Charger le menu existant
   useEffect(() => {
-    loadExistingMenu();
-  }, []);
+    const checkRestaurantProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from('restaurant_profiles')
+          .select('restaurant_name, slug')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-  const loadExistingMenu = async () => {
+        setHasRestaurantProfile(!!data);
+
+        if (data && isNewMenu) {
+          setMenuConfig(prev => ({
+            ...prev,
+            nom: data.restaurant_name,
+            slug: data.slug
+          }));
+        }
+      }
+      setCheckingProfile(false);
+    };
+
+    checkRestaurantProfile();
+  }, [isNewMenu]);
+
+  useEffect(() => {
+    if (!isNewMenu && menuId) {
+      loadExistingMenu(menuId);
+    } else {
+      setLoading(false);
+    }
+  }, [menuId, isNewMenu]);
+
+  const loadExistingMenu = async (id: string) => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -51,36 +86,41 @@ const MonMenu = () => {
       const { data, error } = await supabase
         .from('menus')
         .select('*')
+        .eq('id', id)
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
         console.error('Erreur lors du chargement du menu:', error);
+        showMessage('error', 'Erreur lors du chargement du menu');
         return;
       }
 
-      if (data) {
-        setExistingMenu(data);
-        setMenuConfig({
-          nom: data.nom,
-          description: data.description,
-          slug: data.slug,
-          banniere_url: data.banniere_url,
-          couleur_primaire: data.couleur_primaire,
-          couleur_secondaire: data.couleur_secondaire,
-          couleur_texte: data.couleur_texte,
-          couleur_fond: data.couleur_fond,
-          afficher_powered_by: data.afficher_powered_by,
-          lien_cloudmenu: data.lien_cloudmenu,
-          telephone: data.telephone || '',
-          whatsapp: data.whatsapp || '',
-          instagram: data.instagram || '',
-          facebook: data.facebook || '',
-          tiktok: data.tiktok || ''
-        });
+      if (!data) {
+        showMessage('error', 'Menu non trouvé');
+        navigate('/mes-menus');
+        return;
       }
+
+      setExistingMenu(data);
+      setMenuConfig({
+        nom: data.nom,
+        menu_name: data.menu_name || '',
+        description: data.description,
+        slug: data.slug,
+        banniere_url: data.banniere_url,
+        language: data.language || 'fr',
+        status: data.status || 'published',
+        couleur_primaire: data.couleur_primaire,
+        couleur_secondaire: data.couleur_secondaire,
+        couleur_texte: data.couleur_texte,
+        couleur_fond: data.couleur_fond,
+        afficher_powered_by: data.afficher_powered_by,
+        lien_cloudmenu: data.lien_cloudmenu
+      });
     } catch (error) {
       console.error('Erreur lors du chargement du menu:', error);
+      showMessage('error', 'Erreur lors du chargement du menu');
     } finally {
       setLoading(false);
     }
@@ -89,12 +129,13 @@ const MonMenu = () => {
   const handleInputChange = (field: string, value: string | boolean) => {
     setMenuConfig(prev => {
       const newConfig = { ...prev, [field]: value };
-      
-      // Générer automatiquement le slug quand le nom change
-      if (field === 'nom' && typeof value === 'string' && !existingMenu) {
+
+      // Générer automatiquement le slug quand le nom change (seulement pour un nouveau menu sans restaurant profile)
+      if (field === 'nom' && typeof value === 'string' && isNewMenu && !hasRestaurantProfile) {
         newConfig.slug = generateSlug(value);
       }
-      
+
+
       return newConfig;
     });
   };
@@ -151,7 +192,7 @@ const MonMenu = () => {
   };
 
   const handleSave = async () => {
-    if (!menuConfig.nom.trim()) {
+    if (!hasRestaurantProfile && !menuConfig.nom.trim()) {
       showMessage('error', 'Le nom de l\'établissement est obligatoire');
       return;
     }
@@ -167,22 +208,35 @@ const MonMenu = () => {
 
       if (existingMenu) {
         // Mise à jour du menu existant
+        let finalSlug = menuConfig.slug;
+
+        // Si on passe de draft à published et qu'il n'y a pas de slug, le générer
+        if (menuConfig.status === 'published' && !existingMenu.slug) {
+          const { data: profileData } = await supabase
+            .from('restaurant_profiles')
+            .select('slug')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          const restaurantSlug = profileData?.slug || generateSlug(menuConfig.nom);
+          const menuSlugPart = generateSlug(menuConfig.menu_name || menuConfig.nom);
+          finalSlug = `${restaurantSlug}/${menuSlugPart}`;
+        }
+
         const updateData: MenuUpdate = {
           nom: menuConfig.nom,
+          menu_name: menuConfig.menu_name,
           description: menuConfig.description,
-          slug: menuConfig.slug,
+          slug: finalSlug,
           banniere_url: menuConfig.banniere_url,
+          language: menuConfig.language,
+          status: menuConfig.status,
           couleur_primaire: menuConfig.couleur_primaire,
           couleur_secondaire: menuConfig.couleur_secondaire,
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu,
-          telephone: menuConfig.telephone,
-          whatsapp: menuConfig.whatsapp,
-          instagram: menuConfig.instagram,
-          facebook: menuConfig.facebook,
-          tiktok: menuConfig.tiktok
+          lien_cloudmenu: menuConfig.lien_cloudmenu
         };
 
         const { error } = await supabase
@@ -191,27 +245,37 @@ const MonMenu = () => {
           .eq('id', existingMenu.id);
 
         if (error) throw error;
-        
+
         showMessage('success', 'Menu mis à jour avec succès');
       } else {
         // Création d'un nouveau menu
+        let finalSlug = menuConfig.slug;
+
+        // Ne générer le slug que si le statut est "published"
+        if (menuConfig.status === 'published') {
+          // menuConfig.slug contient le slug du restaurant (ex: "la-napoli")
+          const restaurantSlug = menuConfig.slug;
+          const menuSlugPart = generateSlug(menuConfig.menu_name || 'menu');
+          finalSlug = `${restaurantSlug}/${menuSlugPart}`;
+        } else if (menuConfig.status === 'draft') {
+          finalSlug = '';
+        }
+
         const insertData: MenuInsert = {
           user_id: user.id,
           nom: menuConfig.nom,
+          menu_name: menuConfig.menu_name || 'Menu principal',
           description: menuConfig.description,
-          slug: menuConfig.slug,
+          slug: finalSlug,
           banniere_url: menuConfig.banniere_url,
+          language: menuConfig.language,
+          status: menuConfig.status,
           couleur_primaire: menuConfig.couleur_primaire,
           couleur_secondaire: menuConfig.couleur_secondaire,
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu,
-          telephone: menuConfig.telephone,
-          whatsapp: menuConfig.whatsapp,
-          instagram: menuConfig.instagram,
-          facebook: menuConfig.facebook,
-          tiktok: menuConfig.tiktok
+          lien_cloudmenu: menuConfig.lien_cloudmenu
         };
 
         const { data, error } = await supabase
@@ -224,10 +288,10 @@ const MonMenu = () => {
         
         setExistingMenu(data);
         showMessage('success', 'Menu créé avec succès');
+        setTimeout(() => {
+          navigate('/mes-menus');
+        }, 1500);
       }
-      
-      // Recharger les données
-      await loadExistingMenu();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       showMessage('error', 'Erreur lors de la sauvegarde');
@@ -245,13 +309,10 @@ const MonMenu = () => {
     { name: 'Rose', primary: '#ec4899', secondary: '#831843' }
   ];
 
-  if (loading && !existingMenu) {
+  if ((loading && !existingMenu) || checkingProfile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2 text-gray-600">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span>Chargement...</span>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -277,9 +338,20 @@ const MonMenu = () => {
 
         {/* Header */}
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Identité visuelle</h1>
+          <button
+            onClick={() => navigate('/mes-menus')}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+          >
+            <ArrowLeft size={20} />
+            <span>Retour à mes menus</span>
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            {isNewMenu ? 'Créer un nouveau menu' : 'Modifier le menu'}
+          </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-2">
-            Personnalisez votre menu et voyez le résultat en temps réel
+            {isNewMenu
+              ? 'Configurez l\'identité visuelle de votre nouveau menu'
+              : 'Personnalisez votre menu et voyez le résultat en temps réel'}
           </p>
         </div>
 
@@ -290,18 +362,44 @@ const MonMenu = () => {
               <Info size={20} />
               <span>Informations générales</span>
             </h2>
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-6">
+              {(!hasRestaurantProfile || !isNewMenu) && (
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                    Nom de l'établissement
+                  </label>
+                  <input
+                    type="text"
+                    value={menuConfig.nom}
+                    onChange={(e) => handleInputChange('nom', e.target.value)}
+                    placeholder="ex: Chez Antoine"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
+                    disabled={!isNewMenu}
+                  />
+                  {!isNewMenu && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Le nom de l'établissement est partagé entre tous vos menus
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                  Nom de l'établissement
+                  Nom du menu
                 </label>
                 <input
                   type="text"
-                  value={menuConfig.nom}
-                  onChange={(e) => handleInputChange('nom', e.target.value)}
-                  placeholder="ex: Chez Antoine"
+                  value={menuConfig.menu_name}
+                  onChange={(e) => handleInputChange('menu_name', e.target.value)}
+                  placeholder="ex: Carte des boissons, Menu du jour, Carte des plats..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
                 />
+                <p className="mt-1 text-xs text-gray-500">
+                  {hasRestaurantProfile && isNewMenu
+                    ? 'Donnez un nom à ce menu pour le distinguer de vos autres menus'
+                    : 'Ce nom permettra aux clients de distinguer vos différents menus (boissons, plats, desserts...)'}
+                </p>
               </div>
 
               <div>
@@ -317,30 +415,57 @@ const MonMenu = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  URL de votre menu
-                </label>
-                <div className="flex items-center">
-                  <span className="bg-gray-50 px-3 py-3 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
-                    cloudmenu.fr/m/
-                  </span>
-                  <input
-                    type="text"
-                    value={menuConfig.slug}
-                    onChange={!existingMenu ? (e) => handleInputChange('slug', e.target.value) : undefined}
-                    disabled={!!existingMenu}
-                    className={`flex-1 px-2 sm:px-3 py-1 border border-gray-300 rounded-r-md text-xs sm:text-sm focus:ring-orange-500 focus:border-orange-500 ${
-                      existingMenu ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
-                    }`}
-                  />
+              {hasRestaurantProfile && isNewMenu && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    URL de votre menu
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <span className="bg-gray-50 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500">
+                      cloudmenu.fr/m/
+                    </span>
+                    <input
+                      type="text"
+                      value={menuConfig.slug}
+                      disabled
+                      className="px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
+                    />
+                    <span className="text-gray-500">/</span>
+                    <input
+                      type="text"
+                      value={menuConfig.menu_name ? generateSlug(menuConfig.menu_name) : ''}
+                      disabled
+                      placeholder="nom-du-menu"
+                      className="flex-1 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Le nom du restaurant est fixe. Seul le nom du menu détermine l'URL finale.
+                  </p>
                 </div>
-                {existingMenu && (
+              )}
+
+              {existingMenu && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    URL de votre menu
+                  </label>
+                  <div className="flex items-center">
+                    <span className="bg-gray-50 px-3 py-3 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
+                      cloudmenu.fr/m/
+                    </span>
+                    <input
+                      type="text"
+                      value={menuConfig.slug}
+                      disabled
+                      className="flex-1 px-2 sm:px-3 py-1 border border-gray-300 rounded-r-md text-xs sm:text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
                   <p className="mt-1 text-xs text-gray-500">
                     🔒 L'URL ne peut pas être modifiée après la création (utilisée pour le QR code)
                   </p>
-                )}
-              </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
@@ -460,101 +585,6 @@ const MonMenu = () => {
                       />
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact & Réseaux */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-              <Eye size={20} />
-              <span>Contact & Réseaux</span>
-            </h2>
-            <div className="space-y-4 sm:space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">
-                  Informations de contact
-                </h3>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      Téléphone
-                    </label>
-                    <input
-                      type="tel"
-                      value={menuConfig.telephone}
-                      onChange={(e) => handleInputChange('telephone', e.target.value)}
-                      placeholder="01 23 45 67 89"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      WhatsApp
-                    </label>
-                    <input
-                      type="tel"
-                      value={menuConfig.whatsapp}
-                      onChange={(e) => handleInputChange('whatsapp', e.target.value)}
-                      placeholder="06 12 34 56 78"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-                    />
-                  </div>
-                </div>
-
-                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4 mt-6">
-                  Réseaux sociaux
-                </h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      Instagram
-                    </label>
-                    <input
-                      type="url"
-                      value={menuConfig.instagram}
-                      onChange={(e) => handleInputChange('instagram', e.target.value)}
-                      placeholder="https://instagram.com/monrestaurant"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      Facebook
-                    </label>
-                    <input
-                      type="url"
-                      value={menuConfig.facebook}
-                      onChange={(e) => handleInputChange('facebook', e.target.value)}
-                      placeholder="https://facebook.com/monrestaurant"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                      TikTok
-                    </label>
-                    <input
-                      type="url"
-                      value={menuConfig.tiktok}
-                      onChange={(e) => handleInputChange('tiktok', e.target.value)}
-                      placeholder="https://tiktok.com/@monrestaurant"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                  <p className="text-xs sm:text-sm text-blue-700">
-                    💡 <strong>Astuce :</strong> Ces informations apparaîtront dans le menu hamburger de votre menu public, 
-                    permettant à vos clients de vous contacter facilement.
-                  </p>
                 </div>
               </div>
             </div>

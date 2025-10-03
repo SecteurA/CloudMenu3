@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2 } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft } from 'lucide-react';
 import { supabase, Menu, Category, MenuItem, CategoryInsert, MenuItemInsert, MenuItemUpdate, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import LoadingSpinner from '../Layout/LoadingSpinner';
 
 export default function MenuManagement() {
   const { user } = useAuth();
+  const { menuId } = useParams<{ menuId: string }>();
+  const navigate = useNavigate();
   const [menu, setMenu] = useState<Menu | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
@@ -23,10 +27,10 @@ export default function MenuManagement() {
   const [newItems, setNewItems] = useState<Record<string, Partial<MenuItemInsert>>>({});
 
   useEffect(() => {
-    if (user) {
+    if (user && menuId) {
       loadUserMenu();
     }
-  }, [user]);
+  }, [user, menuId]);
 
   useEffect(() => {
     if (menu) {
@@ -35,21 +39,36 @@ export default function MenuManagement() {
   }, [menu]);
 
   const loadUserMenu = async () => {
+    if (!menuId) {
+      showMessage('error', 'ID de menu manquant');
+      navigate('/mes-menus');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('menus')
         .select('*')
+        .eq('id', menuId)
         .eq('user_id', user!.id)
         .maybeSingle();
 
       if (error) {
         console.error('Erreur lors du chargement du menu:', error);
+        showMessage('error', 'Erreur lors du chargement du menu');
+        return;
+      }
+
+      if (!data) {
+        showMessage('error', 'Menu non trouvé');
+        navigate('/mes-menus');
         return;
       }
 
       setMenu(data);
     } catch (error) {
       console.error('Erreur lors du chargement du menu:', error);
+      showMessage('error', 'Erreur lors du chargement du menu');
     } finally {
       setLoading(false);
     }
@@ -484,8 +503,8 @@ export default function MenuManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Chargement...</div>
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -493,15 +512,15 @@ export default function MenuManagement() {
   if (!menu) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Configurez d'abord votre menu</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Menu non trouvé</h2>
         <p className="text-gray-600 mb-6">
-          Vous devez d'abord configurer les informations de base de votre menu.
+          Ce menu n'existe pas ou vous n'avez pas accès à celui-ci.
         </p>
-        <button 
-          onClick={() => window.location.reload()}
+        <button
+          onClick={() => navigate('/mes-menus')}
           className="bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700"
         >
-          Aller à la configuration
+          Retour à mes menus
         </button>
       </div>
     );
@@ -521,27 +540,37 @@ export default function MenuManagement() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gestion du menu</h2>
-          <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            to="/import-ai"
-            className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-          >
-            <Wand2 size={18} />
-            <span>Import IA</span>
-          </Link>
-          <a 
-            href={`/m/${menu.slug}`} 
-            target="_blank"
-            className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-          >
-            <Eye size={18} />
-            <span>Prévisualiser</span>
-          </a>
+      <div>
+        <button
+          onClick={() => navigate('/mes-menus')}
+          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <ArrowLeft size={20} />
+          <span>Retour à mes menus</span>
+        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{menu.nom}</h2>
+            <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              to={`/import-ai/${menuId}`}
+              className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
+            >
+              <Wand2 size={18} />
+              <span>Import IA</span>
+            </Link>
+            <a
+              href={`/m/${menu.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
+            >
+              <Eye size={18} />
+              <span>Prévisualiser</span>
+            </a>
+          </div>
         </div>
       </div>
 

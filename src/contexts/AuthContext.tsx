@@ -44,11 +44,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsTabVisible(newVisibility);
       }
       
-      // When tab becomes visible again, validate session without re-initialization
-      // Skip this for OAuth callbacks as they need uninterrupted processing
+      // Only check session if tab was hidden for more than 10 minutes
       if (newVisibility && !wasVisible && user && !isOAuthCallback) {
-        // Small delay to avoid conflicts with other effects
-        setTimeout(() => {
+        const now = Date.now();
+        const lastCheck = sessionStorage.getItem('lastSessionCheck');
+        const timeSinceLastCheck = now - (lastCheck ? parseInt(lastCheck) : 0);
+        
+        // Only validate if more than 24 hours have passed
+        if (timeSinceLastCheck > 24 * 60 * 60 * 1000) {
+          sessionStorage.setItem('lastSessionCheck', now.toString());
+          
           supabase.auth.getSession().then(({ data: { session } }) => {
             if (!session && user) {
               console.warn('Session expired while tab was hidden, signing out');
@@ -57,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }).catch(error => {
             console.error('Error checking session on tab visibility change:', error);
           });
-        }, 100);
+        }
       }
     };
 
@@ -90,12 +95,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setInitTimeout(timeout);
     
     const initializeAuth = async () => {
+      // Skip initialization if we already have a user and aren't loading
+      if (user && !loading && !isOAuthCallback) {
+        return;
+      }
+      
       // Prevent re-initialization if already initialized and user exists
       if (user && !loading && !isOAuthCallback) {
         return;
       }
       
+      // Check if we recently initialized (within last hour)
+      const now = Date.now();
+      const lastInit = sessionStorage.getItem('lastAuthInit');
+      const timeSinceLastInit = now - (lastInit ? parseInt(lastInit) : 0);
+      
+      // If we initialized recently and have a user, don't reinitialize
+      if (timeSinceLastInit < 60 * 60 * 1000 && user && !isOAuthCallback) {
+        setLoading(false);
+        return;
+      }
+      
       try {
+        sessionStorage.setItem('lastAuthInit', now.toString());
         const { data: { session } } = await supabase.auth.getSession();
         
         // Clear timeout since we got a response

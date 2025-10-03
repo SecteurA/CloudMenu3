@@ -1,10 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { supabase, Menu, Category, MenuItem, trackMenuVisit } from '../../lib/supabase';
-import { Loader2, AlertCircle, Leaf, Flame, Plus, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
+import { Loader2, AlertCircle, Leaf, Flame, Plus, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
+import QRCode from 'qrcode';
+
+const LANGUAGES = {
+  fr: { name: 'Français', flag: '🇫🇷' },
+  en: { name: 'English', flag: '🇬🇧' },
+  es: { name: 'Español', flag: '🇪🇸' },
+  de: { name: 'Deutsch', flag: '🇩🇪' },
+  it: { name: 'Italiano', flag: '🇮🇹' }
+};
 
 const MenuPreview = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { slug, menuSlug } = useParams<{ slug: string; menuSlug: string }>();
   const [menu, setMenu] = useState<Menu | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<Record<string, MenuItem[]>>({});
@@ -12,17 +22,66 @@ const MenuPreview = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [visitTracked, setVisitTracked] = useState(false);
-  
+  const [allMenus, setAllMenus] = useState<Menu[]>([]);
+  const [restaurantProfile, setRestaurantProfile] = useState<RestaurantProfile | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
+
   // État pour le menu hamburger
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showMenuSelector, setShowMenuSelector] = useState(false);
+  const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  
+  // États pour la réservation
+  const [showReservationForm, setShowReservationForm] = useState(false);
+  const [reservationLoading, setReservationLoading] = useState(false);
+  const [reservationMessage, setReservationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [reservationData, setReservationData] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    party_size: 2,
+    reservation_date: '',
+    reservation_time: '',
+    special_requests: ''
+  });
   
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const navRef = useRef<HTMLDivElement>(null);
   const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
-    loadMenu();
-  }, [slug]);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    if (slug && menuSlug) {
+      loadMenu();
+      generateQRCode();
+    }
+  }, [slug, menuSlug]);
+
+  const generateQRCode = async () => {
+    try {
+      const url = window.location.href;
+      const qrDataUrl = await QRCode.toDataURL(url, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      });
+      setQrCodeUrl(qrDataUrl);
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    }
+  };
 
   // Track visit when menu loads
   useEffect(() => {
@@ -82,32 +141,55 @@ const MenuPreview = () => {
   }, [activeCategory]);
 
   const loadMenu = async () => {
-    if (!slug) {
-      setError('Slug manquant');
+    if (!slug || !menuSlug) {
+      setError('Paramètres manquants');
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('menus')
+      const { data: restaurantData, error: restaurantError } = await supabase
+        .from('restaurant_profiles')
         .select('*')
         .eq('slug', slug)
-        .eq('actif', true)
         .maybeSingle();
 
-      if (error) {
-        setError('Erreur lors du chargement du menu');
+      if (restaurantError || !restaurantData) {
+        setError('Restaurant non trouvé');
+        setLoading(false);
         return;
       }
 
-      if (!data) {
+      setRestaurantProfile(restaurantData);
+
+      const { data: menusData, error: menusError } = await supabase
+        .from('menus')
+        .select('*')
+        .eq('user_id', restaurantData.user_id)
+        .eq('actif', true)
+        .eq('status', 'published');
+
+      if (menusError) {
+        setError('Erreur lors du chargement des menus');
+        setLoading(false);
+        return;
+      }
+
+      setAllMenus(menusData || []);
+
+      const targetMenu = menusData?.find(m => {
+        const menuSlugPart = m.slug.split('/').pop();
+        return menuSlugPart === menuSlug;
+      });
+
+      if (!targetMenu) {
         setError('Menu non trouvé');
+        setLoading(false);
         return;
       }
 
-      setMenu(data);
-      await loadMenuContent(data.id);
+      setMenu(targetMenu);
+      await loadMenuContent(targetMenu.id);
     } catch (error) {
       setError('Erreur lors du chargement du menu');
     } finally {
@@ -244,6 +326,69 @@ const MenuPreview = () => {
     return `https://wa.me/${formattedPhone}`;
   };
 
+  const showReservationMessage = (type: 'success' | 'error', text: string) => {
+    setReservationMessage({ type, text });
+    setTimeout(() => setReservationMessage(null), 5000);
+  };
+
+  const handleReservationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!reservationData.customer_name.trim() || !reservationData.customer_phone.trim() ||
+        !reservationData.reservation_date || !reservationData.reservation_time) {
+      showReservationMessage('error', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setReservationLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('reservations')
+        .insert([{
+          menu_id: menu!.id,
+          customer_name: reservationData.customer_name,
+          customer_email: null,
+          customer_phone: reservationData.customer_phone,
+          party_size: reservationData.party_size,
+          reservation_date: reservationData.reservation_date,
+          reservation_time: reservationData.reservation_time,
+          special_requests: reservationData.special_requests || null,
+          status: 'pending'
+        }]);
+
+      if (error) throw error;
+
+      showReservationMessage('success', 'Votre réservation a été envoyée avec succès ! Le restaurant vous contactera pour confirmer.');
+      setReservationData({
+        customer_name: '',
+        customer_email: '',
+        customer_phone: '',
+        party_size: 2,
+        reservation_date: '',
+        reservation_time: '',
+        special_requests: ''
+      });
+
+      // Fermer le formulaire après 3 secondes
+      setTimeout(() => {
+        setShowReservationForm(false);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Erreur lors de la réservation:', error);
+      showReservationMessage('error', 'Erreur lors de l\'envoi de la réservation. Veuillez réessayer.');
+    } finally {
+      setReservationLoading(false);
+    }
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -267,6 +412,71 @@ const MenuPreview = () => {
     );
   }
 
+  if (!isMobile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-50 flex items-center justify-center p-8">
+        <div className="max-w-2xl w-full">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-12 text-center">
+            <div className="mb-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full mb-6">
+                <Smartphone className="w-10 h-10 text-white" />
+              </div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                {restaurantProfile?.restaurant_name || menu.nom}
+              </h1>
+              <p className="text-2xl font-semibold text-gray-800 mb-2">
+                {menu.menu_name || menu.nom}
+              </p>
+              <p className="text-xl text-gray-600 mb-2">
+                Menu Digital Interactif
+              </p>
+              <p className="text-gray-500">
+                Scannez le QR code avec votre smartphone
+              </p>
+            </div>
+
+            <div className="bg-white p-8 rounded-xl border-2 border-gray-200 inline-block mb-8">
+              {qrCodeUrl && (
+                <img
+                  src={qrCodeUrl}
+                  alt="QR Code"
+                  className="w-64 h-64"
+                />
+              )}
+            </div>
+
+            <div className="space-y-3 text-left max-w-md mx-auto">
+              <div className="flex items-start gap-3 text-gray-700">
+                <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold">
+                  1
+                </div>
+                <p>Ouvrez l'appareil photo de votre smartphone</p>
+              </div>
+              <div className="flex items-start gap-3 text-gray-700">
+                <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold">
+                  2
+                </div>
+                <p>Pointez vers le QR code ci-dessus</p>
+              </div>
+              <div className="flex items-start gap-3 text-gray-700">
+                <div className="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-semibold">
+                  3
+                </div>
+                <p>Découvrez notre menu interactif</p>
+              </div>
+            </div>
+
+            {menu.description && (
+              <div className="mt-8 pt-8 border-t border-gray-200">
+                <p className="text-gray-600">{menu.description}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="min-h-screen"
@@ -278,41 +488,86 @@ const MenuPreview = () => {
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
-          {/* Logo texte (nom du restaurant) */}
-          <h1 
-            className="text-xl font-bold truncate"
+          {/* Logo texte (nom du restaurant) - clickable to go to restaurant landing */}
+          <h1
+            className="text-xl font-bold truncate cursor-pointer hover:opacity-80 transition-opacity"
             style={{ color: '#000000' }}
+            onClick={() => navigate(`/m/${slug}`)}
           >
             {menu.nom}
           </h1>
-          
-          {/* Desktop: Contact icons directly visible */}
-          <div className="hidden lg:flex items-center space-x-4">
-            {menu.telephone && (
+
+          {/* Desktop: Language selector and Contact icons */}
+          <div className="hidden lg:flex items-center space-x-2">
+            {/* Language Selector - show if multiple languages for this menu */}
+            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowLanguageSelector(!showLanguageSelector);
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <Globe size={18} />
+                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                  <span className="text-sm font-medium">{LANGUAGES[menu.language || 'fr']?.name}</span>
+                  <ChevronDown size={16} />
+                </button>
+                {showLanguageSelector && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            const newMenuSlug = m.slug.split('/').pop();
+                            navigate(`/m/${slug}/${newMenuSlug}`);
+                            setShowLanguageSelector(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
+                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
+                            </div>
+                            {m.id === menu.id && <Check size={16} />}
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="w-px h-6 bg-gray-300"></div>
+
+            {/* Contact icons */}
+            <div className="flex items-center space-x-2">
+            {restaurantProfile?.telephone && (
               <a
-                href={`tel:${menu.telephone}`}
+                href={`tel:${restaurantProfile?.telephone}`}
                 className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200"
-                title={`Appeler ${menu.telephone}`}
+                title={`Appeler ${restaurantProfile?.telephone}`}
               >
                 <Phone size={20} />
               </a>
             )}
             
-            {menu.whatsapp && (
+            {restaurantProfile?.whatsapp && (
               <a
-                href={formatWhatsAppLink(menu.whatsapp)}
+                href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
-                title={`WhatsApp ${menu.whatsapp}`}
+                title={`WhatsApp ${restaurantProfile?.whatsapp}`}
               >
                 <MessageCircle size={20} />
               </a>
             )}
             
-            {menu.instagram && (
+            {restaurantProfile?.instagram && (
               <a
-                href={menu.instagram}
+                href={restaurantProfile?.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-all duration-200"
@@ -322,9 +577,9 @@ const MenuPreview = () => {
               </a>
             )}
             
-            {menu.facebook && (
+            {restaurantProfile?.facebook && (
               <a
-                href={menu.facebook}
+                href={restaurantProfile?.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all duration-200"
@@ -334,9 +589,9 @@ const MenuPreview = () => {
               </a>
             )}
             
-            {menu.tiktok && (
+            {restaurantProfile?.tiktok && (
               <a
-                href={menu.tiktok}
+                href={restaurantProfile?.tiktok}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all duration-200"
@@ -347,23 +602,74 @@ const MenuPreview = () => {
                 </div>
               </a>
             )}
+            </div>
+          </div>
+
+          {/* Mobile: Reservation button, Language selector, and Hamburger menu */}
+          <div className="lg:hidden flex items-center space-x-2">
+            {/* Reservation button - highlighted */}
+            <button
+              onClick={() => setShowReservationForm(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
+              style={{ backgroundColor: menu.couleur_primaire }}
+            >
+              <Calendar size={18} />
+              <span className="text-sm font-medium">Réserver</span>
+            </button>
+
+            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setShowLanguageSelector(!showLanguageSelector);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                >
+                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                  <ChevronDown size={16} />
+                </button>
+                {showLanguageSelector && (
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
+                        <button
+                          key={m.id}
+                          onClick={() => {
+                            const newMenuSlug = m.slug.split('/').pop();
+                            navigate(`/m/${slug}/${newMenuSlug}`);
+                            setShowLanguageSelector(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
+                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
+                            </div>
+                            {m.id === menu.id && <Check size={16} />}
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mobile/Tablet: Hamburger menu button - only show if there are contact items */}
+            {(restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <MenuIcon size={24} className="text-black" />
+              </button>
+            )}
           </div>
           
-          {/* Mobile/Tablet: Hamburger menu button - only show if there are contact items */}
-          {(menu.telephone || menu.whatsapp || menu.instagram || menu.facebook || menu.tiktok) && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMenuOpen(!isMenuOpen);
-              }}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              <MenuIcon size={24} className="text-black" />
-            </button>
-          )}
-          
           {/* Menu déroulant */}
-          {isMenuOpen && (menu.telephone || menu.whatsapp || menu.instagram || menu.facebook || menu.tiktok) && (
+          {isMenuOpen && (restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
             <div className="absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
               <div className="px-4 py-3 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
@@ -371,9 +677,9 @@ const MenuPreview = () => {
               
               <div className="py-1">
                 {/* Téléphone */}
-                {menu.telephone && (
+                {restaurantProfile?.telephone && (
                   <a
-                    href={`tel:${menu.telephone}`}
+                    href={`tel:${restaurantProfile?.telephone}`}
                     className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
                   >
                     <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
@@ -381,15 +687,15 @@ const MenuPreview = () => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{menu.telephone}</div>
+                      <div className="text-sm text-gray-600">{restaurantProfile?.telephone}</div>
                     </div>
                   </a>
                 )}
                 
                 {/* WhatsApp */}
-                {menu.whatsapp && (
+                {restaurantProfile?.whatsapp && (
                   <a
-                    href={formatWhatsAppLink(menu.whatsapp)}
+                    href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
@@ -399,15 +705,15 @@ const MenuPreview = () => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{menu.whatsapp}</div>
+                      <div className="text-sm text-gray-600">{restaurantProfile?.whatsapp}</div>
                     </div>
                   </a>
                 )}
                 
                 {/* Instagram */}
-                {menu.instagram && (
+                {restaurantProfile?.instagram && (
                   <a
-                    href={menu.instagram}
+                    href={restaurantProfile?.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
@@ -417,15 +723,15 @@ const MenuPreview = () => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">Instagram</div>
-                      <div className="text-sm text-gray-600">@{menu.instagram.split('/').pop()}</div>
+                      <div className="text-sm text-gray-600">@{restaurantProfile?.instagram.split('/').pop()}</div>
                     </div>
                   </a>
                 )}
                 
                 {/* Facebook */}
-                {menu.facebook && (
+                {restaurantProfile?.facebook && (
                   <a
-                    href={menu.facebook}
+                    href={restaurantProfile?.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
@@ -441,9 +747,9 @@ const MenuPreview = () => {
                 )}
                 
                 {/* TikTok */}
-                {menu.tiktok && (
+                {restaurantProfile?.tiktok && (
                   <a
-                    href={menu.tiktok}
+                    href={restaurantProfile?.tiktok}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
@@ -453,13 +759,13 @@ const MenuPreview = () => {
                     </div>
                     <div>
                       <div className="font-medium text-gray-900">TikTok</div>
-                      <div className="text-sm text-gray-600">@{menu.tiktok.split('/').pop()?.replace('@', '')}</div>
+                      <div className="text-sm text-gray-600">@{restaurantProfile?.tiktok.split('/').pop()?.replace('@', '')}</div>
                     </div>
                   </a>
                 )}
                 
                 {/* Message si aucun contact configuré */}
-                {!menu.telephone && !menu.whatsapp && !menu.instagram && !menu.facebook && !menu.tiktok && (
+                {!restaurantProfile?.telephone && !restaurantProfile?.whatsapp && !restaurantProfile?.instagram && !restaurantProfile?.facebook && !restaurantProfile?.tiktok && (
                   <div className="px-4 py-8 text-gray-500 text-center">
                     Aucune information de contact configurée
                   </div>
@@ -514,6 +820,21 @@ const MenuPreview = () => {
             </div>
           </div>
         )}
+
+
+        {/* Bouton Desktop Réserver une table */}
+        <div className="hidden lg:block mb-8">
+          <div className="text-center">
+            <button
+              onClick={() => setShowReservationForm(true)}
+              className="bg-orange-600 text-white px-8 py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center space-x-3 font-medium text-lg mx-auto"
+              style={{ backgroundColor: menu.couleur_primaire }}
+            >
+              <Calendar size={24} />
+              <span>Réserver une table</span>
+            </button>
+          </div>
+        </div>
 
         {/* Contenu du menu */}
         <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-8 lg:items-start">
@@ -819,6 +1140,158 @@ const MenuPreview = () => {
           </footer>
         )}
       </div>
+
+      {/* Modal de réservation */}
+      {showReservationForm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">Réserver une table</h2>
+                <button
+                  onClick={() => setShowReservationForm(false)}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Message */}
+            {reservationMessage && (
+              <div className={`mx-6 mt-4 p-4 rounded-lg flex items-start space-x-2 ${
+                reservationMessage.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {reservationMessage.type === 'success' ? (
+                  <Check className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <X className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                )}
+                <span className="text-sm">{reservationMessage.text}</span>
+              </div>
+            )}
+
+            {/* Formulaire */}
+            <form onSubmit={handleReservationSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom complet *
+                </label>
+                <input
+                  type="text"
+                  value={reservationData.customer_name}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="Votre nom"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Téléphone *
+                </label>
+                <input
+                  type="tel"
+                  value={reservationData.customer_phone}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="06 12 34 56 78"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={reservationData.reservation_date}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  min={getTomorrowDate()}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Heure *
+                </label>
+                <input
+                  type="time"
+                  value={reservationData.reservation_time}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_time: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre de personnes *
+                </label>
+                <select
+                  value={reservationData.party_size}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, party_size: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  required
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(num => (
+                    <option key={num} value={num}>
+                      {num} personne{num > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Demandes spéciales (optionnel)
+                </label>
+                <textarea
+                  value={reservationData.special_requests}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, special_requests: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white resize-none"
+                  rows={3}
+                  placeholder="Allergies, préférences de table, occasion spéciale..."
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowReservationForm(false)}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={reservationLoading}
+                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+                  style={{ backgroundColor: menu.couleur_primaire }}
+                >
+                  {reservationLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Calendar className="w-5 h-5" />
+                      <span>Réserver</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

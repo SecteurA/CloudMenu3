@@ -1,16 +1,19 @@
 import React, { memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Menu as MenuIcon, 
-  Settings, 
-  BarChart3, 
-  QrCode, 
-  Palette, 
+import {
+  Home,
+  Menu as MenuIcon,
+  Settings,
+  BarChart3,
+  QrCode,
+  Palette,
   FileText,
   Image,
   Eye,
-  X
+  X,
+  Calendar,
+  Users,
+  LayoutGrid
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,15 +30,20 @@ const Sidebar: React.FC<SidebarProps> = memo(({ isOpen, onClose }) => {
       section: 'Tableau de bord',
       items: [
         { icon: Home, label: 'Accueil', path: '/', active: location.pathname === '/' },
-        { icon: BarChart3, label: 'Statistiques' },
       ]
     },
     {
-      section: 'Gestion du menu',
+      section: 'Mon Restaurant',
       items: [
-        { icon: Palette, label: 'Identité visuelle', path: '/mon-menu', active: location.pathname === '/mon-menu' },
-        { icon: FileText, label: 'Mon menu', path: '/categories', active: location.pathname === '/categories' },
+        { icon: Palette, label: 'Identité Visuelle', path: '/identite-visuelle', active: location.pathname === '/identite-visuelle' },
+        { icon: LayoutGrid, label: 'Mes Menus', path: '/mes-menus', active: location.pathname === '/mes-menus' || location.pathname.startsWith('/mon-menu') || location.pathname.startsWith('/categories') },
         { icon: QrCode, label: 'QR Code', path: '/qr-code', active: location.pathname === '/qr-code' },
+      ]
+    },
+    {
+      section: 'Services clients',
+      items: [
+        { icon: Calendar, label: 'Réservations', path: '/reservations', active: location.pathname === '/reservations' },
       ]
     },
     {

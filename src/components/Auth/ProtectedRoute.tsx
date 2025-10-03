@@ -64,13 +64,13 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     let isMounted = true;
     
-    // Prevent duplicate menu checks when we already have the result
-    if (hasMenu !== null && user && !loading) {
+    // Prevent duplicate menu checks when we already have the result and tab is visible
+    if (hasMenu !== null && user && !loading && isTabVisible) {
       return;
     }
     
-    // Skip menu check if tab is hidden
-    if (!isTabVisible && !loading) {
+    // Skip menu check if tab is hidden and we already have a user
+    if (!isTabVisible && user && hasMenu !== null) {
       return;
     }
     
@@ -79,7 +79,7 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
         return;
       }
       
-      // Skip menu check if already on onboarding
+      // Skip menu check if already on onboarding or if we recently checked
       if (window.location.pathname === '/onboarding') {
         if (isMounted) {
           setHasMenu(false);
@@ -87,40 +87,54 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
         return;
       }
       
-      setCheckingMenu(true);
+      // Throttle menu checks to avoid excessive loading states
+      const now = Date.now();
+      const lastMenuCheck = sessionStorage.getItem('lastMenuCheck');
+      const timeSinceLastCheck = now - (lastMenuCheck ? parseInt(lastMenuCheck) : 0);
+      
+      // If we checked recently (less than 5 minutes) and have a result, don't check again
+      if (timeSinceLastCheck < 5 * 60 * 1000 && hasMenu !== null) {
+        return;
+      }
+      
+      // Don't show loading state during navigation if we already have menu status
+      const shouldShowLoading = hasMenu === null && window.location.pathname !== '/onboarding';
+      
+      if (shouldShowLoading) {
+        setCheckingMenu(true);
+      }
+      sessionStorage.setItem('lastMenuCheck', now.toString());
       
       try {
         const { data, error } = await supabase
-          .from('menus')
+          .from('restaurant_profiles')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (!isMounted) return;
 
-        if (error) {
-          // On error, redirect to onboarding to let user set up their menu
+        if (error && error.code !== 'PGRST116') {
+          console.error('Error checking restaurant profile:', error);
           setHasMenu(false);
           navigate('/onboarding', { replace: true });
           return;
         }
 
-        const menuExists = !!data;
-        setHasMenu(menuExists);
-        
-        // Navigate to onboarding if no menu exists
-        if (!menuExists && window.location.pathname !== '/onboarding') {
+        const profileExists = !!data;
+        setHasMenu(profileExists);
+
+        if (!profileExists && window.location.pathname !== '/onboarding') {
           navigate('/onboarding', { replace: true });
         }
       } catch (error) {
         if (!isMounted) return;
-        
-        console.error('Exception during menu check:', error);
-        // On exception, redirect to onboarding to let user set up their menu
+
+        console.error('Exception during profile check:', error);
         setHasMenu(false);
         navigate('/onboarding', { replace: true });
       } finally {
-        if (isMounted) {
+        if (isMounted && shouldShowLoading) {
           setCheckingMenu(false);
         }
       }
@@ -144,13 +158,17 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [emergencyTimeout]);
 
   // Show loading while auth is initializing or checking menu
-  if (loading || checkingMenu) {
+  // Only show loading on first visit or when actually needed
+  const shouldShowAuthLoading = loading && (!user || hasMenu === null);
+  const shouldShowMenuLoading = checkingMenu && hasMenu === null;
+  
+  if (shouldShowAuthLoading || shouldShowMenuLoading) {
     // Special handling for OAuth callbacks - show more specific message
     const loadingMessage = isOAuthCallback 
       ? 'Finalisation de la connexion...' 
-      : loading 
+      : shouldShowAuthLoading
         ? 'Chargement...' 
-        : checkingMenu 
+        : shouldShowMenuLoading
           ? 'Vérification du compte...' 
           : 'Initialisation...';
 
@@ -170,7 +188,8 @@ function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   // If we're still checking menu status and not on onboarding, show loading
-  if (hasMenu === null && window.location.pathname !== '/onboarding') {
+  // Only show this loading state on first visit
+  if (hasMenu === null && window.location.pathname !== '/onboarding' && !sessionStorage.getItem('lastMenuCheck')) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-2 text-gray-600">
