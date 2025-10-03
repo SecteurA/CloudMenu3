@@ -339,11 +339,11 @@ const MonMenu = () => {
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <button
-            onClick={() => navigate('/mes-menus')}
+            onClick={() => isNewMenu ? navigate('/mes-menus') : navigate(`/categories/${menuId}`)}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft size={20} />
-            <span>Retour à mes menus</span>
+            <span>{isNewMenu ? 'Retour à mes menus' : 'Retour aux articles'}</span>
           </button>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             {isNewMenu ? 'Créer un nouveau menu' : 'Modifier le menu'}
