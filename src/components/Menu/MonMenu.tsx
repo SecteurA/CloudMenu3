@@ -247,6 +247,9 @@ const MonMenu = () => {
         if (error) throw error;
 
         showMessage('success', 'Menu mis à jour avec succès');
+        setTimeout(() => {
+          navigate(`/categories/${existingMenu.id}`);
+        }, 1500);
       } else {
         // Création d'un nouveau menu
         let finalSlug = menuConfig.slug;
