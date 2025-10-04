@@ -58,7 +58,7 @@ const MenuPreview = () => {
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
 
   // Translation states
-  const [currentLanguage, setCurrentLanguage] = useState<string>('fr');
+  const [currentLanguage, setCurrentLanguage] = useState<string>('');
   const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
   const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
   const [itemTranslations, setItemTranslations] = useState<Record<string, ItemTranslation>>({});
@@ -103,25 +103,6 @@ const MenuPreview = () => {
       loadTranslations(currentLanguage);
     }
   }, [currentLanguage, menu, categories, menuItems]);
-
-  useEffect(() => {
-    if (menu && !currentLanguage) {
-      // Check if there's a lang parameter in URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const langParam = urlParams.get('lang');
-
-      if (langParam && availableLanguages.some(l => l.language_code === langParam)) {
-        // Use language from URL if it's available for this menu
-        setCurrentLanguage(langParam);
-      } else if (langParam === menu.default_language) {
-        // Use language from URL if it's the default language
-        setCurrentLanguage(langParam);
-      } else {
-        // Fallback to menu's default language
-        setCurrentLanguage(menu.default_language || 'fr');
-      }
-    }
-  }, [menu, availableLanguages]);
 
   const generateQRCode = async () => {
     try {
@@ -246,7 +227,7 @@ const MenuPreview = () => {
       }
 
       setMenu(targetMenu);
-      await loadMenuContent(targetMenu.id);
+      await loadMenuContent(targetMenu.id, targetMenu);
     } catch (error) {
       setError('Erreur lors du chargement du menu');
     } finally {
@@ -254,7 +235,7 @@ const MenuPreview = () => {
     }
   };
 
-  const loadMenuContent = async (menuId: string) => {
+  const loadMenuContent = async (menuId: string, menuData: Menu) => {
     try {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
@@ -290,6 +271,26 @@ const MenuPreview = () => {
         .eq('menu_id', menuId);
 
       setAvailableLanguages(languages || []);
+
+      // Check URL parameter for language preference
+      if (!currentLanguage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+
+        if (langParam) {
+          // Check if language is available for this menu
+          const hasTranslation = languages?.some(l => l.language_code === langParam);
+          const isDefaultLanguage = langParam === menuData.default_language;
+
+          if (hasTranslation || isDefaultLanguage) {
+            setCurrentLanguage(langParam);
+            return; // Exit early, language is set
+          }
+        }
+
+        // Fallback to menu's default language
+        setCurrentLanguage(menuData.default_language || 'fr');
+      }
     } catch (error) {
       console.error('Erreur lors du chargement du contenu:', error);
     }
