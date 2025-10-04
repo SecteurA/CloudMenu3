@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase, Menu, MenuInsert, MenuUpdate, generateSlug, uploadImage, deleteImage } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
+import MenuTranslations from './MenuTranslations';
 
 const MonMenu = () => {
   const { menuId } = useParams<{ menuId: string }>();
@@ -35,7 +36,8 @@ const MonMenu = () => {
     couleur_texte: '#374151',
     couleur_fond: '#ffffff',
     afficher_powered_by: true,
-    lien_cloudmenu: true
+    lien_cloudmenu: true,
+    currency_symbol: '€'
   });
 
   const [loading, setLoading] = useState(false);
@@ -116,7 +118,8 @@ const MonMenu = () => {
         couleur_texte: data.couleur_texte,
         couleur_fond: data.couleur_fond,
         afficher_powered_by: data.afficher_powered_by,
-        lien_cloudmenu: data.lien_cloudmenu
+        lien_cloudmenu: data.lien_cloudmenu,
+        currency_symbol: data.currency_symbol || '€'
       });
     } catch (error) {
       console.error('Erreur lors du chargement du menu:', error);
@@ -236,7 +239,8 @@ const MonMenu = () => {
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu
+          lien_cloudmenu: menuConfig.lien_cloudmenu,
+          currency_symbol: menuConfig.currency_symbol
         };
 
         const { error } = await supabase
@@ -247,6 +251,9 @@ const MonMenu = () => {
         if (error) throw error;
 
         showMessage('success', 'Menu mis à jour avec succès');
+        setTimeout(() => {
+          navigate(`/categories/${existingMenu.id}`);
+        }, 1500);
       } else {
         // Création d'un nouveau menu
         let finalSlug = menuConfig.slug;
@@ -275,7 +282,8 @@ const MonMenu = () => {
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu
+          lien_cloudmenu: menuConfig.lien_cloudmenu,
+          currency_symbol: menuConfig.currency_symbol
         };
 
         const { data, error } = await supabase
@@ -339,11 +347,11 @@ const MonMenu = () => {
         {/* Header */}
         <div className="mb-4 sm:mb-6">
           <button
-            onClick={() => navigate('/mes-menus')}
+            onClick={() => isNewMenu ? navigate('/mes-menus') : navigate(`/categories/${menuId}`)}
             className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
           >
             <ArrowLeft size={20} />
-            <span>Retour à mes menus</span>
+            <span>{isNewMenu ? 'Retour à mes menus' : 'Retour aux articles'}</span>
           </button>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             {isNewMenu ? 'Créer un nouveau menu' : 'Modifier le menu'}
@@ -415,57 +423,22 @@ const MonMenu = () => {
                 />
               </div>
 
-              {hasRestaurantProfile && isNewMenu && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL de votre menu
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <span className="bg-gray-50 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500">
-                      cloudmenu.fr/m/
-                    </span>
-                    <input
-                      type="text"
-                      value={menuConfig.slug}
-                      disabled
-                      className="px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
-                    />
-                    <span className="text-gray-500">/</span>
-                    <input
-                      type="text"
-                      value={menuConfig.menu_name ? generateSlug(menuConfig.menu_name) : ''}
-                      disabled
-                      placeholder="nom-du-menu"
-                      className="flex-1 px-3 py-3 border border-gray-300 rounded-lg text-sm text-gray-500 bg-gray-50 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Le nom du restaurant est fixe. Seul le nom du menu détermine l'URL finale.
-                  </p>
-                </div>
-              )}
-
-              {existingMenu && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    URL de votre menu
-                  </label>
-                  <div className="flex items-center">
-                    <span className="bg-gray-50 px-3 py-3 border border-r-0 border-gray-300 rounded-l-lg text-sm text-gray-500">
-                      cloudmenu.fr/m/
-                    </span>
-                    <input
-                      type="text"
-                      value={menuConfig.slug}
-                      disabled
-                      className="flex-1 px-2 sm:px-3 py-1 border border-gray-300 rounded-r-md text-xs sm:text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    🔒 L'URL ne peut pas être modifiée après la création (utilisée pour le QR code)
-                  </p>
-                </div>
-              )}
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  Symbole de devise
+                </label>
+                <input
+                  type="text"
+                  value={menuConfig.currency_symbol}
+                  onChange={(e) => handleInputChange('currency_symbol', e.target.value)}
+                  placeholder="€"
+                  maxLength={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Symbole qui s'affichera à côté des prix (ex: €, $, £, CHF, DH)
+                </p>
+              </div>
 
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
@@ -509,6 +482,11 @@ const MonMenu = () => {
               </div>
             </div>
           </div>
+
+          {/* Translations - Only show for existing menus */}
+          {!isNewMenu && existingMenu && (
+            <MenuTranslations menuId={existingMenu.id} defaultLanguage={existingMenu.default_language || 'fr'} menuName={existingMenu.nom} />
+          )}
 
           {/* Design */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

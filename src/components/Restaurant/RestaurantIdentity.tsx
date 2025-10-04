@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Upload, X, Check, Loader2, Building2, Phone, Instagram, Facebook, Music, MapPin, Clock } from 'lucide-react';
+import { Save, Upload, X, Check, Loader2, Building2, Phone, Instagram, Facebook, Music, MapPin, Clock, Star } from 'lucide-react';
 import { supabase, RestaurantProfile, RestaurantProfileInsert, RestaurantProfileUpdate, uploadImage, deleteImage, generateSlug } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../Layout/LoadingSpinner';
@@ -20,13 +20,17 @@ export default function RestaurantIdentity() {
     description: '',
     banner_url: '',
     logo_url: '',
+    hero_background_color: '#f3f4f6',
     telephone: '',
     whatsapp: '',
     instagram: '',
     facebook: '',
     tiktok: '',
     address: '',
-    hours: ''
+    hours: '',
+    google_business_url: '',
+    location: '',
+    show_footer_branding: true
   });
 
   useEffect(() => {
@@ -58,13 +62,17 @@ export default function RestaurantIdentity() {
           description: data.description || '',
           banner_url: data.banner_url || '',
           logo_url: data.logo_url || '',
+          hero_background_color: data.hero_background_color || '#f3f4f6',
           telephone: data.telephone || '',
           whatsapp: data.whatsapp || '',
           instagram: data.instagram || '',
           facebook: data.facebook || '',
           tiktok: data.tiktok || '',
           address: data.address || '',
-          hours: data.hours || ''
+          hours: data.hours || '',
+          google_business_url: data.google_business_url || '',
+          location: data.location || '',
+          show_footer_branding: data.show_footer_branding !== undefined ? data.show_footer_branding : true
         });
       }
     } catch (error) {
@@ -81,7 +89,11 @@ export default function RestaurantIdentity() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'show_footer_branding') {
+      setFormData(prev => ({ ...prev, [field]: value === 'true' }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
 
     if (field === 'restaurant_name' && !restaurantProfile) {
       const slug = generateSlug(value);
@@ -95,13 +107,19 @@ export default function RestaurantIdentity() {
     setUploading(true);
     try {
       const oldImageUrl = formData[field];
-      const imageUrl = await uploadImage(file, user.id, field === 'banner_url' ? 'banners' : 'logos');
+      const folder = field === 'banner_url' ? 'bannieres' : 'logos';
+      const result = await uploadImage(file, folder);
+
+      if (result.error) {
+        showMessage('error', result.error);
+        return;
+      }
 
       if (oldImageUrl) {
         await deleteImage(oldImageUrl);
       }
 
-      setFormData(prev => ({ ...prev, [field]: imageUrl }));
+      setFormData(prev => ({ ...prev, [field]: result.url }));
       showMessage('success', 'Image téléchargée avec succès');
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
@@ -133,13 +151,17 @@ export default function RestaurantIdentity() {
           description: formData.description,
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
+          hero_background_color: formData.hero_background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
           facebook: formData.facebook,
           tiktok: formData.tiktok,
           address: formData.address,
-          hours: formData.hours
+          hours: formData.hours,
+          google_business_url: formData.google_business_url,
+          location: formData.location,
+          show_footer_branding: formData.show_footer_branding
         };
 
         const { error } = await supabase
@@ -158,13 +180,17 @@ export default function RestaurantIdentity() {
           description: formData.description,
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
+          hero_background_color: formData.hero_background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
           facebook: formData.facebook,
           tiktok: formData.tiktok,
           address: formData.address,
-          hours: formData.hours
+          hours: formData.hours,
+          google_business_url: formData.google_business_url,
+          location: formData.location,
+          show_footer_branding: formData.show_footer_branding
         };
 
         const { data, error } = await supabase
@@ -300,6 +326,23 @@ export default function RestaurantIdentity() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <MapPin size={16} className="inline mr-1" />
+                  Localisation (Google Maps)
+                </label>
+                <input
+                  type="url"
+                  value={formData.location}
+                  onChange={(e) => handleInputChange('location', e.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Lien Google Maps pour afficher la carte dans le footer
+                </p>
+              </div>
             </div>
           </div>
 
@@ -371,6 +414,30 @@ export default function RestaurantIdentity() {
                     />
                   </label>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Couleur de fond du hero
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.hero_background_color}
+                    onChange={(e) => handleInputChange('hero_background_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.hero_background_color}
+                      onChange={(e) => handleInputChange('hero_background_color', e.target.value)}
+                      placeholder="#f3f4f6"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Couleur d'arrière-plan pour la section hero</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -446,6 +513,53 @@ export default function RestaurantIdentity() {
                   placeholder="https://tiktok.com/@..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Star size={16} className="inline mr-1" />
+                  Google My Business
+                </label>
+                <input
+                  type="url"
+                  value={formData.google_business_url}
+                  onChange={(e) => handleInputChange('google_business_url', e.target.value)}
+                  placeholder="https://g.page/..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Les clients pourront voir vos avis Google et laisser un avis depuis votre page
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Paramètres du Footer</h2>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Afficher le branding CloudMenu
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Afficher "Propulsé par CloudMenu" dans le footer
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange('show_footer_branding', (!formData.show_footer_branding).toString())}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.show_footer_branding ? 'bg-orange-600' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      formData.show_footer_branding ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             </div>
           </div>

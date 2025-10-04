@@ -10,7 +10,8 @@ const LANGUAGES = {
   en: { name: 'English', flag: '🇬🇧' },
   es: { name: 'Español', flag: '🇪🇸' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' }
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' }
 };
 
 export default function MenuListPage() {
@@ -212,35 +213,35 @@ export default function MenuListPage() {
                   )}
 
                   <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
                           {menu.menu_name || menu.nom}
                         </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-2xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
                           <span className="text-xs text-gray-500">
                             {LANGUAGES[menu.language || 'fr']?.name}
                           </span>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col gap-1.5">
                         <button
                           onClick={() => toggleStatus(menu, 'status')}
-                          className={`px-2 py-1 rounded text-xs font-medium ${
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                             menu.status === 'published'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                           }`}
                         >
                           {menu.status === 'published' ? 'Publié' : 'Brouillon'}
                         </button>
                         <button
                           onClick={() => toggleStatus(menu, 'actif')}
-                          className={`px-2 py-1 rounded text-xs font-medium ${
+                          className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                             menu.actif
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           }`}
                         >
                           {menu.actif ? 'Actif' : 'Inactif'}
@@ -248,35 +249,37 @@ export default function MenuListPage() {
                       </div>
                     </div>
 
-                    <div className="flex gap-2 flex-wrap mt-4">
+                    <div className="space-y-2">
                       <Link
                         to={`/categories/${menu.id}`}
-                        className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 text-sm bg-orange-600 text-white hover:bg-orange-700 px-3 py-2.5 rounded font-medium shadow-sm"
+                        className="w-full flex items-center justify-center gap-2 text-sm bg-orange-600 text-white hover:bg-orange-700 px-4 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
                       >
-                        <List size={16} />
+                        <List size={18} />
                         <span>Gérer les articles</span>
                       </Link>
-                      <Link
-                        to={`/mon-menu/${menu.id}`}
-                        className="flex-1 min-w-[120px] flex items-center justify-center gap-1 text-sm text-gray-700 hover:bg-gray-50 px-3 py-2 rounded border border-gray-300"
-                      >
-                        <Settings size={16} />
-                        <span>Paramètres</span>
-                      </Link>
-                      <button
-                        onClick={() => duplicateMenu(menu)}
-                        className="flex items-center justify-center gap-1 text-sm text-gray-700 hover:bg-gray-50 px-3 py-2 rounded border border-gray-300"
-                      >
-                        <Copy size={16} />
-                        <span>Dupliquer</span>
-                      </button>
-                      <button
-                        onClick={() => deleteMenu(menu.id)}
-                        className="flex items-center justify-center gap-1 text-sm text-red-600 hover:bg-red-50 px-3 py-2 rounded border border-red-200"
-                      >
-                        <Trash2 size={16} />
-                        <span>Supprimer</span>
-                      </button>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Link
+                          to={`/mon-menu/${menu.id}`}
+                          className="flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2.5 rounded-lg border border-gray-200 transition-colors"
+                          title="Paramètres"
+                        >
+                          <Settings size={20} />
+                        </Link>
+                        <button
+                          onClick={() => duplicateMenu(menu)}
+                          className="flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2.5 rounded-lg border border-gray-200 transition-colors"
+                          title="Dupliquer"
+                        >
+                          <Copy size={20} />
+                        </button>
+                        <button
+                          onClick={() => deleteMenu(menu.id)}
+                          className="flex items-center justify-center text-red-600 hover:text-red-700 hover:bg-red-50 p-2.5 rounded-lg border border-red-200 transition-colors"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -324,9 +327,6 @@ export default function MenuListPage() {
                             <div className="font-medium text-gray-900">
                               {menu.menu_name || menu.nom}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              cloudmenu.fr/m/{menu.slug}
-                            </div>
                           </div>
                         </div>
                       </td>
@@ -358,11 +358,10 @@ export default function MenuListPage() {
                         <div className="flex items-center justify-end gap-2">
                           <Link
                             to={`/categories/${menu.id}`}
-                            className="px-3 py-1.5 bg-orange-600 text-white hover:bg-orange-700 rounded text-sm font-medium flex items-center gap-1.5 shadow-sm"
+                            className="p-2 text-gray-600 hover:bg-gray-50 rounded"
                             title="Gérer les articles"
                           >
-                            <List size={16} />
-                            <span>Articles</span>
+                            <List size={18} />
                           </Link>
                           <Link
                             to={`/mon-menu/${menu.id}`}

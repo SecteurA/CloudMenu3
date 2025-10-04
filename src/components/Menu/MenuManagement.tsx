@@ -1,10 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings, Globe } from 'lucide-react';
 import { supabase, Menu, Category, MenuItem, CategoryInsert, MenuItemInsert, MenuItemUpdate, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../Layout/LoadingSpinner';
+
+interface MenuLanguage {
+  id: string;
+  language_code: string;
+  is_default: boolean;
+  menu_title: string;
+}
+
+interface CategoryTranslation {
+  id: string;
+  category_id: string;
+  language_code: string;
+  nom: string;
+  description: string;
+}
+
+interface MenuItemTranslation {
+  id: string;
+  menu_item_id: string;
+  language_code: string;
+  nom: string;
+  description: string;
+}
+
+const AVAILABLE_LANGUAGES: Record<string, { name: string; flag: string }> = {
+  fr: { name: 'Français', flag: '🇫🇷' },
+  en: { name: 'English', flag: '🇬🇧' },
+  es: { name: 'Español', flag: '🇪🇸' },
+  de: { name: 'Deutsch', flag: '🇩🇪' },
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  pt: { name: 'Português', flag: '🇵🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' },
+  zh: { name: '中文', flag: '🇨🇳' },
+  ja: { name: '日本語', flag: '🇯🇵' },
+  ru: { name: 'Русский', flag: '🇷🇺' },
+  nl: { name: 'Nederlands', flag: '🇳🇱' },
+};
 
 export default function MenuManagement() {
   const { user } = useAuth();
@@ -19,11 +56,20 @@ export default function MenuManagement() {
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
+  // Translation states
+  const [currentLanguage, setCurrentLanguage] = useState<string>('');
+  const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
+  const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
+  const [itemTranslations, setItemTranslations] = useState<Record<string, MenuItemTranslation>>({});
+  const [currentMenuTitle, setCurrentMenuTitle] = useState<string>('');
+
   // États pour l'édition d'éléments
   const [editingItemData, setEditingItemData] = useState<Partial<MenuItemUpdate>>({});
 
   // États pour les nouveaux éléments
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [editingCategoryData, setEditingCategoryData] = useState<{ nom: string; description: string }>({ nom: '', description: '' });
   const [newItems, setNewItems] = useState<Record<string, Partial<MenuItemInsert>>>({});
 
   useEffect(() => {
@@ -34,9 +80,16 @@ export default function MenuManagement() {
 
   useEffect(() => {
     if (menu) {
+      loadAvailableLanguages();
       loadMenuData();
     }
   }, [menu]);
+
+  useEffect(() => {
+    if (menu && currentLanguage && currentLanguage !== menu.default_language) {
+      loadTranslations();
+    }
+  }, [currentLanguage, menu]);
 
   const loadUserMenu = async () => {
     if (!menuId) {
@@ -112,6 +165,84 @@ export default function MenuManagement() {
     }
   };
 
+  const loadAvailableLanguages = async () => {
+    if (!menu) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('menu_languages')
+        .select('*')
+        .eq('menu_id', menu.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setAvailableLanguages(data || []);
+
+      // Set current language to default if not set
+      if (!currentLanguage && menu.default_language) {
+        setCurrentLanguage(menu.default_language);
+      }
+    } catch (error) {
+      console.error('Error loading languages:', error);
+    }
+  };
+
+  const loadTranslations = async () => {
+    if (!menu || !currentLanguage || currentLanguage === menu.default_language) {
+      setCategoryTranslations({});
+      setItemTranslations({});
+      setCurrentMenuTitle(menu?.menu_name || '');
+      return;
+    }
+
+    try {
+      // Load menu title translation
+      const currentLang = availableLanguages.find(l => l.language_code === currentLanguage);
+      if (currentLang?.menu_title) {
+        setCurrentMenuTitle(currentLang.menu_title);
+      } else {
+        setCurrentMenuTitle(menu.menu_name || 'Menu');
+      }
+
+      const categoryIds = categories.map(c => c.id);
+
+      // Load category translations
+      const { data: catTrans } = await supabase
+        .from('category_translations')
+        .select('*')
+        .in('category_id', categoryIds)
+        .eq('language_code', currentLanguage);
+
+      const catTransMap: Record<string, CategoryTranslation> = {};
+      catTrans?.forEach(t => {
+        catTransMap[t.category_id] = t;
+      });
+      setCategoryTranslations(catTransMap);
+
+      // Load item translations
+      const allItemIds: string[] = [];
+      Object.values(menuItems).forEach(items => {
+        items.forEach(item => allItemIds.push(item.id));
+      });
+
+      if (allItemIds.length > 0) {
+        const { data: itemTrans } = await supabase
+          .from('menu_item_translations')
+          .select('*')
+          .in('menu_item_id', allItemIds)
+          .eq('language_code', currentLanguage);
+
+        const itemTransMap: Record<string, MenuItemTranslation> = {};
+        itemTrans?.forEach(t => {
+          itemTransMap[t.menu_item_id] = t;
+        });
+        setItemTranslations(itemTransMap);
+      }
+    } catch (error) {
+      console.error('Error loading translations:', error);
+    }
+  };
+
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);
@@ -124,6 +255,7 @@ export default function MenuManagement() {
       const categoryData: CategoryInsert = {
         menu_id: menu.id,
         nom: newCategoryName,
+        description: newCategoryDescription || '',
         ordre: categories.length
       };
 
@@ -138,10 +270,88 @@ export default function MenuManagement() {
       setCategories([...categories, data]);
       setMenuItems({ ...menuItems, [data.id]: [] });
       setNewCategoryName('');
+      setNewCategoryDescription('');
       showMessage('success', 'Catégorie ajoutée avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'ajout de la catégorie:', error);
       showMessage('error', 'Erreur lors de l\'ajout de la catégorie');
+    }
+  };
+
+  const updateCategory = async (categoryId: string) => {
+    if (!editingCategoryData.nom.trim()) return;
+
+    try {
+      const isTranslation = currentLanguage !== menu.default_language;
+
+      if (isTranslation) {
+        // Update translation table
+        const existingTranslation = categoryTranslations[categoryId];
+
+        if (existingTranslation) {
+          // Update existing translation
+          const { error } = await supabase
+            .from('category_translations')
+            .update({
+              nom: editingCategoryData.nom,
+              description: editingCategoryData.description || ''
+            })
+            .eq('id', existingTranslation.id);
+
+          if (error) throw error;
+        } else {
+          // Create new translation
+          const { error } = await supabase
+            .from('category_translations')
+            .insert({
+              category_id: categoryId,
+              language_code: currentLanguage,
+              nom: editingCategoryData.nom,
+              description: editingCategoryData.description || ''
+            });
+
+          if (error) throw error;
+        }
+
+        // Update local state
+        setCategoryTranslations({
+          ...categoryTranslations,
+          [categoryId]: {
+            id: existingTranslation?.id || crypto.randomUUID(),
+            category_id: categoryId,
+            language_code: currentLanguage,
+            nom: editingCategoryData.nom,
+            description: editingCategoryData.description || ''
+          }
+        });
+
+        showMessage('success', 'Traduction de catégorie modifiée avec succès');
+      } else {
+        // Update default language (categories table)
+        const { error } = await supabase
+          .from('categories')
+          .update({
+            nom: editingCategoryData.nom,
+            description: editingCategoryData.description || ''
+          })
+          .eq('id', categoryId);
+
+        if (error) throw error;
+
+        setCategories(categories.map(c =>
+          c.id === categoryId
+            ? { ...c, nom: editingCategoryData.nom, description: editingCategoryData.description || '' }
+            : c
+        ));
+
+        showMessage('success', 'Catégorie modifiée avec succès');
+      }
+
+      setEditingCategory(null);
+      setEditingCategoryData({ nom: '', description: '' });
+    } catch (error) {
+      console.error('Erreur lors de la modification de la catégorie:', error);
+      showMessage('error', 'Erreur lors de la modification de la catégorie');
     }
   };
 
@@ -422,9 +632,14 @@ export default function MenuManagement() {
 
   const startEditItem = (item: MenuItem) => {
     setEditingItem(item.id);
+
+    // If viewing a translation, load the translated text
+    const isTranslation = currentLanguage !== menu.default_language;
+    const translation = isTranslation ? itemTranslations[item.id] : null;
+
     setEditingItemData({
-      nom: item.nom,
-      description: item.description,
+      nom: translation?.nom || item.nom,
+      description: translation?.description || item.description,
       prix: item.prix,
       allergenes: item.allergenes,
       vegetarien: item.vegetarien,
@@ -446,23 +661,71 @@ export default function MenuManagement() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .update(editingItemData)
-        .eq('id', itemId)
-        .select()
-        .single();
+      const isTranslation = currentLanguage !== menu.default_language;
 
-      if (error) throw error;
+      if (isTranslation) {
+        // Update translation table
+        const existingTranslation = itemTranslations[itemId];
 
-      setMenuItems({
-        ...menuItems,
-        [categoryId]: menuItems[categoryId].map(item => item.id === itemId ? data : item)
-      });
-      
+        if (existingTranslation) {
+          // Update existing translation
+          const { error } = await supabase
+            .from('menu_item_translations')
+            .update({
+              nom: editingItemData.nom,
+              description: editingItemData.description || ''
+            })
+            .eq('id', existingTranslation.id);
+
+          if (error) throw error;
+        } else {
+          // Create new translation
+          const { error } = await supabase
+            .from('menu_item_translations')
+            .insert({
+              menu_item_id: itemId,
+              language_code: currentLanguage,
+              nom: editingItemData.nom,
+              description: editingItemData.description || ''
+            });
+
+          if (error) throw error;
+        }
+
+        // Update local state
+        setItemTranslations({
+          ...itemTranslations,
+          [itemId]: {
+            id: existingTranslation?.id || crypto.randomUUID(),
+            menu_item_id: itemId,
+            language_code: currentLanguage,
+            nom: editingItemData.nom!,
+            description: editingItemData.description || ''
+          }
+        });
+
+        showMessage('success', 'Traduction modifiée avec succès');
+      } else {
+        // Update default language (menu_items table)
+        const { data, error } = await supabase
+          .from('menu_items')
+          .update(editingItemData)
+          .eq('id', itemId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setMenuItems({
+          ...menuItems,
+          [categoryId]: menuItems[categoryId].map(item => item.id === itemId ? data : item)
+        });
+
+        showMessage('success', 'Plat modifié avec succès');
+      }
+
       setEditingItem(null);
       setEditingItemData({});
-      showMessage('success', 'Plat modifié avec succès');
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       showMessage('error', 'Erreur lors de la modification');
@@ -548,47 +811,96 @@ export default function MenuManagement() {
           <ArrowLeft size={20} />
           <span>Retour à mes menus</span>
         </button>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{menu.nom}</h2>
-            <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentMenuTitle || menu.menu_name || 'Menu'}</h2>
+              <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <Link
+                to={`/import-ai/${menuId}`}
+                className="bg-purple-600 text-white p-2.5 rounded-lg hover:bg-purple-700 transition-colors"
+                title="Import IA"
+              >
+                <Wand2 size={20} />
+              </Link>
+              <Link
+                to={`/mon-menu/${menuId}`}
+                className="bg-gray-600 text-white p-2.5 rounded-lg hover:bg-gray-700 transition-colors"
+                title="Paramètres"
+              >
+                <Settings size={20} />
+              </Link>
+              <a
+                href={`/m/${menu.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-orange-600 text-white p-2.5 rounded-lg hover:bg-orange-700 transition-colors"
+                title="Prévisualiser"
+              >
+                <Eye size={20} />
+              </a>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              to={`/import-ai/${menuId}`}
-              className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-            >
-              <Wand2 size={18} />
-              <span>Import IA</span>
-            </Link>
-            <a
-              href={`/m/${menu.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-            >
-              <Eye size={18} />
-              <span>Prévisualiser</span>
-            </a>
-          </div>
+
+          {/* Language Tabs */}
+          {availableLanguages.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setCurrentLanguage(menu.default_language || 'fr')}
+                className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  currentLanguage === menu.default_language
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                title={AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}
+              >
+                <span className="text-base sm:text-lg">{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.flag || '🇫🇷'}</span>
+                <span className="hidden sm:inline">{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}</span>
+              </button>
+              {availableLanguages.map(lang => (
+                <button
+                  key={lang.id}
+                  onClick={() => setCurrentLanguage(lang.language_code)}
+                  className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    currentLanguage === lang.language_code
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  title={AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}
+                >
+                  <span className="text-base sm:text-lg">{AVAILABLE_LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                  <span className="hidden sm:inline">{AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Ajouter une catégorie */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Ajouter une catégorie</h3>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3">
           <input
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="Nom de la catégorie (ex: Entrées, Plats, Desserts...)"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-            onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addCategory()}
+          />
+          <textarea
+            value={newCategoryDescription}
+            onChange={(e) => setNewCategoryDescription(e.target.value)}
+            placeholder="Description de la catégorie (optionnelle)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base resize-none"
+            rows={2}
           />
           <button
             onClick={addCategory}
-            className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center space-x-2 text-sm sm:text-base"
+            className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center space-x-2 text-sm sm:text-base self-end"
           >
             <Plus size={18} />
             <span>Ajouter</span>
@@ -611,21 +923,90 @@ export default function MenuManagement() {
             <div key={category.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
               {/* Header de catégorie */}
               <div className="p-4 sm:p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <GripVertical className="text-gray-400 hidden sm:block" size={20} />
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{category.nom}</h3>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm">
-                      {menuItems[category.id]?.length || 0} plats
-                    </span>
+                {editingCategory === category.id ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editingCategoryData.nom}
+                      onChange={(e) => setEditingCategoryData({ ...editingCategoryData, nom: e.target.value })}
+                      placeholder="Nom de la catégorie"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    />
+                    <textarea
+                      value={editingCategoryData.description}
+                      onChange={(e) => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
+                      placeholder="Description de la catégorie (optionnelle)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 resize-none"
+                      rows={2}
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => updateCategory(category.id)}
+                        className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
+                      >
+                        <Save size={16} />
+                        <span>Enregistrer</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingCategory(null);
+                          setEditingCategoryData({ nom: '', description: '' });
+                        }}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center space-x-2"
+                      >
+                        <X size={16} />
+                        <span>Annuler</span>
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => deleteCategory(category.id)}
-                    className="text-red-600 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <GripVertical className="text-gray-400 hidden sm:block mt-1" size={20} />
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                            {currentLanguage !== menu.default_language && categoryTranslations[category.id]
+                              ? categoryTranslations[category.id].nom
+                              : category.nom}
+                          </h3>
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm">
+                            {menuItems[category.id]?.length || 0} plats
+                          </span>
+                        </div>
+                        {category.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {currentLanguage !== menu.default_language && categoryTranslations[category.id]
+                              ? categoryTranslations[category.id].description
+                              : category.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditingCategory(category.id);
+                          const isTranslation = currentLanguage !== menu.default_language;
+                          const translation = isTranslation ? categoryTranslations[category.id] : null;
+                          setEditingCategoryData({
+                            nom: translation?.nom || category.nom,
+                            description: translation?.description || category.description || ''
+                          });
+                        }}
+                        className="text-orange-600 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-50"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => deleteCategory(category.id)}
+                        className="text-red-600 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Liste des plats */}
@@ -706,7 +1087,7 @@ export default function MenuManagement() {
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Prix (€)</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Prix ({menu.currency_symbol || '€'})</label>
                                 <input
                                   type="number"
                                   value={editingItemData.prix || ''}
@@ -769,16 +1150,26 @@ export default function MenuManagement() {
                           /* Affichage normal */
                           <div>
                             <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-medium text-gray-900 text-sm sm:text-base">{item.nom}</h4>
+                          <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                            {currentLanguage !== menu.default_language && itemTranslations[item.id]
+                              ? itemTranslations[item.id].nom
+                              : item.nom}
+                          </h4>
                           {item.vegetarien && <Leaf className="text-green-600" size={16} />}
                           {item.vegan && <Leaf className="text-green-700" size={16} />}
                           {item.epice && <Flame className="text-red-600" size={16} />}
                         </div>
-                        {item.description && (
-                          <p className="text-xs sm:text-sm text-gray-600 mb-1">{item.description}</p>
+                        {(currentLanguage !== menu.default_language && itemTranslations[item.id]
+                          ? itemTranslations[item.id].description
+                          : item.description) && (
+                          <p className="text-xs sm:text-sm text-gray-600 mb-1">
+                            {currentLanguage !== menu.default_language && itemTranslations[item.id]
+                              ? itemTranslations[item.id].description
+                              : item.description}
+                          </p>
                         )}
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                          <span className="font-semibold text-orange-600 text-sm sm:text-base">{item.prix.toFixed(2)} €</span>
+                          <span className="font-semibold text-orange-600 text-sm sm:text-base">{item.prix.toFixed(2)} {menu.currency_symbol || '€'}</span>
                           {item.allergenes.length > 0 && (
                             <span className="text-xs text-gray-500 break-words">
                               Allergènes: {item.allergenes.join(', ')}
@@ -801,7 +1192,9 @@ export default function MenuManagement() {
                           >
                             {categories.map((cat) => (
                               <option key={cat.id} value={cat.id}>
-                                {cat.nom}
+                                {currentLanguage !== menu.default_language && categoryTranslations[cat.id]
+                                  ? categoryTranslations[cat.id].nom
+                                  : cat.nom}
                               </option>
                             ))}
                           </select>
@@ -833,24 +1226,13 @@ export default function MenuManagement() {
                               className="text-blue-600 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50"
                               title="Modifier"
                             >
-                              <Edit size={18} />
+                              <Pencil size={18} />
                             </button>
                         <button
                           onClick={() => toggleItemAvailability(item, category.id)}
                           className={`p-2 rounded-lg ${
-                            item.disponible 
-                              ? 'text-green-600 hover:bg-green-50' 
-                              : 'text-gray-400 hover:bg-gray-50'
-                          }`}
-                          title={item.disponible ? 'Disponible' : 'Non disponible'}
-                        >
-                          {item.disponible ? <Eye size={18} /> : <EyeOff size={18} />}
-                        </button>
-                        <button
-                          onClick={() => toggleItemAvailability(item, category.id)}
-                          className={`p-2 rounded-lg ${
-                            item.disponible 
-                              ? 'text-green-600 hover:bg-green-50' 
+                            item.disponible
+                              ? 'text-green-600 hover:bg-green-50'
                               : 'text-gray-400 hover:bg-gray-50'
                           }`}
                           title={item.disponible ? 'Disponible' : 'Non disponible'}
@@ -936,7 +1318,7 @@ export default function MenuManagement() {
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                         <div className="flex-1">
-                          <label className="block text-xs font-medium text-gray-700 mb-2">Prix (€)</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Prix ({menu.currency_symbol || '€'})</label>
                         <input
                           type="number"
                           value={newItem.prix || ''}

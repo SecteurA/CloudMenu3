@@ -22,6 +22,7 @@ export interface RestaurantProfile {
   description: string;
   banner_url: string;
   logo_url: string;
+  hero_background_color: string;
   telephone: string;
   whatsapp: string;
   instagram: string;
@@ -40,6 +41,7 @@ export interface RestaurantProfileInsert {
   description?: string;
   banner_url?: string;
   logo_url?: string;
+  hero_background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -55,6 +57,7 @@ export interface RestaurantProfileUpdate {
   description?: string;
   banner_url?: string;
   logo_url?: string;
+  hero_background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -89,6 +92,7 @@ export interface Menu {
   instagram: string;
   facebook: string;
   tiktok: string;
+  currency_symbol: string;
 }
 
 export interface MenuInsert {
@@ -112,6 +116,7 @@ export interface MenuInsert {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+  currency_symbol?: string;
 }
 
 export interface MenuUpdate {
@@ -133,6 +138,7 @@ export interface MenuUpdate {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+  currency_symbol?: string;
 }
 
 // Types pour les catégories

@@ -1,16 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
-import { Loader2, AlertCircle, Leaf, Flame, Plus, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
+import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 
 const LANGUAGES = {
-  fr: { name: 'Français', flag: '🇫🇷' },
-  en: { name: 'English', flag: '🇬🇧' },
-  es: { name: 'Español', flag: '🇪🇸' },
-  de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' }
+  fr: { name: 'Français', flag: '🇫🇷', rtl: false },
+  en: { name: 'English', flag: '🇬🇧', rtl: false },
+  es: { name: 'Español', flag: '🇪🇸', rtl: false },
+  de: { name: 'Deutsch', flag: '🇩🇪', rtl: false },
+  it: { name: 'Italiano', flag: '🇮🇹', rtl: false },
+  pt: { name: 'Português', flag: '🇵🇹', rtl: false },
+  ar: { name: 'العربية', flag: '🇸🇦', rtl: true },
+  zh: { name: '中文', flag: '🇨🇳', rtl: false },
+  ja: { name: '日本語', flag: '🇯🇵', rtl: false },
+  ru: { name: 'Русский', flag: '🇷🇺', rtl: false },
+  nl: { name: 'Nederlands', flag: '🇳🇱', rtl: false }
 };
+
+interface MenuLanguage {
+  id: string;
+  language_code: string;
+  is_default: boolean;
+  menu_title: string;
+}
+
+interface CategoryTranslation {
+  category_id: string;
+  nom: string;
+  description: string;
+}
+
+interface ItemTranslation {
+  menu_item_id: string;
+  nom: string;
+  description: string;
+}
 
 const MenuPreview = () => {
   const navigate = useNavigate();
@@ -31,6 +56,13 @@ const MenuPreview = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showMenuSelector, setShowMenuSelector] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+
+  // Translation states
+  const [currentLanguage, setCurrentLanguage] = useState<string>('');
+  const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
+  const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
+  const [itemTranslations, setItemTranslations] = useState<Record<string, ItemTranslation>>({});
+  const [currentMenuTitle, setCurrentMenuTitle] = useState<string>('');
   
   // États pour la réservation
   const [showReservationForm, setShowReservationForm] = useState(false);
@@ -65,6 +97,12 @@ const MenuPreview = () => {
       generateQRCode();
     }
   }, [slug, menuSlug]);
+
+  useEffect(() => {
+    if (menu && currentLanguage) {
+      loadTranslations(currentLanguage);
+    }
+  }, [currentLanguage, menu, categories, menuItems]);
 
   const generateQRCode = async () => {
     try {
@@ -189,7 +227,7 @@ const MenuPreview = () => {
       }
 
       setMenu(targetMenu);
-      await loadMenuContent(targetMenu.id);
+      await loadMenuContent(targetMenu.id, targetMenu);
     } catch (error) {
       setError('Erreur lors du chargement du menu');
     } finally {
@@ -197,7 +235,7 @@ const MenuPreview = () => {
     }
   };
 
-  const loadMenuContent = async (menuId: string) => {
+  const loadMenuContent = async (menuId: string, menuData: Menu) => {
     try {
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
@@ -225,8 +263,92 @@ const MenuPreview = () => {
         });
         setMenuItems(itemsByCategory);
       }
+
+      // Load available languages
+      const { data: languages } = await supabase
+        .from('menu_languages')
+        .select('*')
+        .eq('menu_id', menuId);
+
+      setAvailableLanguages(languages || []);
+
+      // Check URL parameter for language preference
+      if (!currentLanguage) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const langParam = urlParams.get('lang');
+
+        if (langParam) {
+          // Check if language is available for this menu
+          const hasTranslation = languages?.some(l => l.language_code === langParam);
+          const isDefaultLanguage = langParam === menuData.default_language;
+
+          if (hasTranslation || isDefaultLanguage) {
+            setCurrentLanguage(langParam);
+            return; // Exit early, language is set
+          }
+        }
+
+        // Fallback to menu's default language
+        setCurrentLanguage(menuData.default_language || 'fr');
+      }
     } catch (error) {
       console.error('Erreur lors du chargement du contenu:', error);
+    }
+  };
+
+  const loadTranslations = async (languageCode: string) => {
+    if (!menu || !languageCode || languageCode === (menu.default_language || 'fr')) {
+      setCategoryTranslations({});
+      setItemTranslations({});
+      setCurrentMenuTitle(menu?.menu_name || '');
+      return;
+    }
+
+    try {
+      // Load menu title translation
+      const currentLang = availableLanguages.find(l => l.language_code === languageCode);
+      if (currentLang?.menu_title) {
+        setCurrentMenuTitle(currentLang.menu_title);
+      } else {
+        setCurrentMenuTitle(menu.menu_name || '');
+      }
+
+      const categoryIds = categories.map(c => c.id);
+
+      // Load category translations
+      const { data: catTrans } = await supabase
+        .from('category_translations')
+        .select('*')
+        .in('category_id', categoryIds)
+        .eq('language_code', languageCode);
+
+      const catMap: Record<string, CategoryTranslation> = {};
+      catTrans?.forEach(t => {
+        catMap[t.category_id] = t;
+      });
+      setCategoryTranslations(catMap);
+
+      // Load item translations
+      const allItemIds: string[] = [];
+      Object.values(menuItems).forEach(items => {
+        items.forEach(item => allItemIds.push(item.id));
+      });
+
+      if (allItemIds.length > 0) {
+        const { data: itemTrans } = await supabase
+          .from('menu_item_translations')
+          .select('*')
+          .in('menu_item_id', allItemIds)
+          .eq('language_code', languageCode);
+
+        const itemMap: Record<string, ItemTranslation> = {};
+        itemTrans?.forEach(t => {
+          itemMap[t.menu_item_id] = t;
+        });
+        setItemTranslations(itemMap);
+      }
+    } catch (error) {
+      console.error('Error loading translations:', error);
     }
   };
 
@@ -389,6 +511,10 @@ const MenuPreview = () => {
     return tomorrow.toISOString().split('T')[0];
   };
 
+  const isRTL = () => {
+    return LANGUAGES[currentLanguage as keyof typeof LANGUAGES]?.rtl || false;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -425,7 +551,7 @@ const MenuPreview = () => {
                 {restaurantProfile?.restaurant_name || menu.nom}
               </h1>
               <p className="text-2xl font-semibold text-gray-800 mb-2">
-                {menu.menu_name || menu.nom}
+                {currentMenuTitle || menu.menu_name || menu.nom}
               </p>
               <p className="text-xl text-gray-600 mb-2">
                 Menu Digital Interactif
@@ -478,11 +604,12 @@ const MenuPreview = () => {
   }
 
   return (
-    <div 
+    <div
       className="min-h-screen"
-      style={{ 
+      dir={isRTL() ? 'rtl' : 'ltr'}
+      style={{
         backgroundColor: menu.couleur_fond,
-        color: menu.couleur_texte 
+        color: menu.couleur_texte
       }}
     >
       {/* Navbar fixe */}
@@ -498,9 +625,9 @@ const MenuPreview = () => {
           </h1>
 
           {/* Desktop: Language selector and Contact icons */}
-          <div className="hidden lg:flex items-center space-x-2">
-            {/* Language Selector - show if multiple languages for this menu */}
-            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+          <div className={`hidden lg:flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
+            {/* Language Selector */}
+            {availableLanguages.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => {
@@ -509,31 +636,45 @@ const MenuPreview = () => {
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
                   <Globe size={18} />
-                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
-                  <span className="text-sm font-medium">{LANGUAGES[menu.language || 'fr']?.name}</span>
+                  <span className="text-xl">{LANGUAGES[currentLanguage]?.flag || '🌐'}</span>
+                  <span className="text-sm font-medium">{LANGUAGES[currentLanguage]?.name || currentLanguage}</span>
                   <ChevronDown size={16} />
                 </button>
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => {
-                            const newMenuSlug = m.slug.split('/').pop();
-                            navigate(`/m/${slug}/${newMenuSlug}`);
-                            setShowLanguageSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
-                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
-                            </div>
-                            {m.id === menu.id && <Check size={16} />}
+                    <button
+                      onClick={() => {
+                        setCurrentLanguage(menu.default_language || 'fr');
+                        setShowLanguageSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === menu.default_language ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{LANGUAGES[menu.default_language || 'fr']?.flag}</span>
+                          <span className="text-sm">{LANGUAGES[menu.default_language || 'fr']?.name}</span>
+                        </div>
+                        {currentLanguage === menu.default_language && <Check size={16} />}
+                      </div>
+                    </button>
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => {
+                          setCurrentLanguage(lang.language_code);
+                          setShowLanguageSelector(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === lang.language_code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                            <span className="text-sm">{LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
                           </div>
-                        </button>
-                      ))}
+                          {currentLanguage === lang.language_code && <Check size={16} />}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -542,7 +683,7 @@ const MenuPreview = () => {
             <div className="w-px h-6 bg-gray-300"></div>
 
             {/* Contact icons */}
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {restaurantProfile?.telephone && (
               <a
                 href={`tel:${restaurantProfile?.telephone}`}
@@ -606,7 +747,7 @@ const MenuPreview = () => {
           </div>
 
           {/* Mobile: Reservation button, Language selector, and Hamburger menu */}
-          <div className="lg:hidden flex items-center space-x-2">
+          <div className={`lg:hidden flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {/* Reservation button - highlighted */}
             <button
               onClick={() => setShowReservationForm(true)}
@@ -617,7 +758,7 @@ const MenuPreview = () => {
               <span className="text-sm font-medium">Réserver</span>
             </button>
 
-            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+            {availableLanguages.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => {
@@ -625,27 +766,41 @@ const MenuPreview = () => {
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
-                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                  <span className="text-xl">{LANGUAGES[currentLanguage]?.flag || '🌐'}</span>
                   <ChevronDown size={16} />
                 </button>
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => {
-                            const newMenuSlug = m.slug.split('/').pop();
-                            navigate(`/m/${slug}/${newMenuSlug}`);
-                            setShowLanguageSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
-                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
-                            </div>
-                            {m.id === menu.id && <Check size={16} />}
+                    <button
+                      onClick={() => {
+                        setCurrentLanguage(menu.default_language || 'fr');
+                        setShowLanguageSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === menu.default_language ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{LANGUAGES[menu.default_language || 'fr']?.flag}</span>
+                          <span className="text-sm">{LANGUAGES[menu.default_language || 'fr']?.name}</span>
+                        </div>
+                        {currentLanguage === menu.default_language && <Check size={16} />}
+                      </div>
+                    </button>
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => {
+                          setCurrentLanguage(lang.language_code);
+                          setShowLanguageSelector(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === lang.language_code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                            <span className="text-sm">{LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
+                          </div>
+                          {currentLanguage === lang.language_code && <Check size={16} />}
                           </div>
                         </button>
                       ))}
@@ -680,7 +835,7 @@ const MenuPreview = () => {
                 {restaurantProfile?.telephone && (
                   <a
                     href={`tel:${restaurantProfile?.telephone}`}
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Phone size={18} className="text-blue-600" />
@@ -698,7 +853,7 @@ const MenuPreview = () => {
                     href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <MessageCircle size={18} className="text-green-600" />
@@ -716,7 +871,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Instagram size={18} className="text-pink-600" />
@@ -734,7 +889,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Facebook size={18} className="text-blue-700" />
@@ -752,7 +907,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.tiktok}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-bold">T</span>
@@ -794,9 +949,9 @@ const MenuPreview = () => {
         {/* Navigation des catégories - Style Glovo */}
         {categories.length > 0 && (
           <div className="sticky top-16 bg-white z-20 -mx-4 px-4 py-3 mb-8 border-b border-gray-200 shadow-sm lg:hidden">
-            <div 
+            <div
               ref={navRef}
-              className="flex space-x-8 overflow-x-auto scrollbar-hide items-center"
+              className={`flex ${isRTL() ? 'space-x-reverse' : ''} space-x-8 overflow-x-auto scrollbar-hide items-center`}
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map((category) => (
@@ -814,7 +969,9 @@ const MenuPreview = () => {
                     borderColor: activeCategory === category.id ? menu.couleur_primaire : undefined
                   }}
                 >
-                  {category.nom}
+                  {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]
+                    ? categoryTranslations[category.id].nom
+                    : category.nom}
                 </button>
               ))}
             </div>
@@ -827,7 +984,7 @@ const MenuPreview = () => {
           <div className="text-center">
             <button
               onClick={() => setShowReservationForm(true)}
-              className="bg-orange-600 text-white px-8 py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center space-x-3 font-medium text-lg mx-auto"
+              className={`bg-orange-600 text-white px-8 py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-3 font-medium text-lg mx-auto`}
               style={{ backgroundColor: menu.couleur_primaire }}
             >
               <Calendar size={24} />
@@ -921,7 +1078,9 @@ const MenuPreview = () => {
                           className="text-2xl lg:text-3xl font-bold"
                           style={{ color: menu.couleur_secondaire }}
                         >
-                          {category.nom}
+                          {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]
+                    ? categoryTranslations[category.id].nom
+                    : category.nom}
                         </h2>
                         {category.description && (
                           <p className="text-base lg:text-lg text-gray-600 mt-2">{category.description}</p>
@@ -936,37 +1095,33 @@ const MenuPreview = () => {
                         <div className="lg:hidden">
                           {items.map((item) => (
                             <div key={item.id} className="px-4 py-6 border-b border-gray-100 last:border-b-0">
-                              <div className="flex items-start space-x-4">
-                                {/* Image */}
-                                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                                  {item.image_url ? (
-                                    <img 
-                                      src={item.image_url} 
+                              <div className={`flex items-start ${isRTL() ? 'space-x-reverse' : ''} space-x-4`}>
+                                {/* Image - only show if exists */}
+                                {item.image_url && (
+                                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                    <img
+                                      src={item.image_url}
                                       alt={item.nom}
                                       className="w-full h-full object-cover"
                                     />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                        <span className="text-gray-400 text-xs">📷</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                                
+                                  </div>
+                                )}
+
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 pr-2">
+                                    <div className={`flex-1 ${isRTL() ? 'pl-2' : 'pr-2'}`}>
                                       <h3 
                                         className="font-bold text-lg leading-tight"
                                         style={{ color: menu.couleur_secondaire }}
                                       >
-                                        {item.nom}
+                                        {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                          ? itemTranslations[item.id].nom
+                                          : item.nom}
                                       </h3>
                                       
                                       {/* Icônes diététiques */}
-                                      <div className="flex items-center space-x-1 mt-1">
+                                      <div className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-1 mt-1`}>
                                         {item.vegetarien && (
                                           <span className="bg-green-100 text-green-700 p-1 rounded-full" title="Végétarien">
                                             <Leaf className="w-3 h-3" />
@@ -990,33 +1145,29 @@ const MenuPreview = () => {
                                       </div>
                                     </div>
 
-                                    <span 
-                                      className="text-xl font-bold flex-shrink-0 ml-2"
+                                    <span
+                                      className={`text-xl font-bold flex-shrink-0 ${isRTL() ? 'mr-2' : 'ml-2'}`}
                                       style={{ color: menu.couleur_primaire }}
                                     >
-                                      {item.prix.toFixed(2)} €
+                                      {item.prix.toFixed(2)} {menu.currency_symbol || '€'}
                                     </span>
                                   </div>
 
-                                  {item.description && (
-                                    <p className="text-sm text-gray-600 mb-3 leading-relaxed">{item.description}</p>
-                                  )}
-
-                                  {item.allergenes.length > 0 && (
-                                    <p className="text-xs text-gray-500 mb-3 bg-gray-50 px-2 py-1 rounded">
-                                      Allergènes: {item.allergenes.join(', ')}
+                                  {(currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                    ? itemTranslations[item.id].description
+                                    : item.description) && (
+                                    <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                                      {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                        ? itemTranslations[item.id].description
+                                        : item.description}
                                     </p>
                                   )}
 
-                                  <div className="flex items-center justify-end">
-                                    <button 
-                                      className="px-4 py-2 rounded-full text-white text-sm font-medium flex items-center space-x-1 shadow-sm"
-                                      style={{ backgroundColor: menu.couleur_primaire }}
-                                    >
-                                      <Plus className="w-4 h-4" />
-                                      <span>Ajouter</span>
-                                    </button>
-                                  </div>
+                                  {item.allergenes.length > 0 && (
+                                    <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
+                                      Allergènes: {item.allergenes.join(', ')}
+                                    </p>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1027,58 +1178,86 @@ const MenuPreview = () => {
                         {items.map((item) => (
                           <div key={item.id} className="hidden lg:block">
                             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
-                              {/* Card Image */}
-                              <div className="aspect-video bg-gray-100 overflow-hidden relative">
-                                {item.image_url ? (
-                                  <img 
-                                    src={item.image_url} 
+                              {/* Card Image - only show if exists */}
+                              {item.image_url && (
+                                <div className="aspect-video bg-gray-100 overflow-hidden relative">
+                                  <img
+                                    src={item.image_url}
                                     alt={item.nom}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                      <span className="text-gray-400 text-2xl">🍽️</span>
-                                    </div>
+
+                                  {/* Dietary Icons Overlay */}
+                                  <div className={`absolute top-3 ${isRTL() ? 'right-3' : 'left-3'} flex ${isRTL() ? 'space-x-reverse' : ''} space-x-1`}>
+                                    {item.vegetarien && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-green-600 p-1.5 rounded-full shadow-sm" title="Végétarien">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.vegan && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-green-700 p-1.5 rounded-full shadow-sm" title="Vegan">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.sans_gluten && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-blue-600 px-2 py-1 rounded-full text-xs font-bold shadow-sm">
+                                        SG
+                                      </span>
+                                    )}
+                                    {item.epice && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-red-600 p-1.5 rounded-full shadow-sm" title="Épicé">
+                                        <Flame className="w-4 h-4" />
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                                
-                                {/* Dietary Icons Overlay */}
-                                <div className="absolute top-3 left-3 flex space-x-1">
-                                  {item.vegetarien && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-green-600 p-1.5 rounded-full shadow-sm" title="Végétarien">
-                                      <Leaf className="w-4 h-4" />
-                                    </span>
-                                  )}
-                                  {item.vegan && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-green-700 p-1.5 rounded-full shadow-sm" title="Vegan">
-                                      <Leaf className="w-4 h-4" />
-                                    </span>
-                                  )}
-                                  {item.sans_gluten && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-blue-600 px-2 py-1 rounded-full text-xs font-bold shadow-sm">
-                                      SG
-                                    </span>
-                                  )}
-                                  {item.epice && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-red-600 p-1.5 rounded-full shadow-sm" title="Épicé">
-                                      <Flame className="w-4 h-4" />
-                                    </span>
-                                  )}
                                 </div>
-                              </div>
+                              )}
 
                               {/* Card Content */}
                               <div className="p-6 flex-1 flex flex-col">
-                                <h3 
+                                {/* Dietary Icons - only show when no image */}
+                                {!item.image_url && (item.vegetarien || item.vegan || item.sans_gluten || item.epice) && (
+                                  <div className={`flex ${isRTL() ? 'space-x-reverse' : ''} space-x-1 mb-3`}>
+                                    {item.vegetarien && (
+                                      <span className="bg-green-100 text-green-600 p-1.5 rounded-full" title="Végétarien">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.vegan && (
+                                      <span className="bg-green-200 text-green-700 p-1.5 rounded-full" title="Vegan">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.sans_gluten && (
+                                      <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs font-bold">
+                                        SG
+                                      </span>
+                                    )}
+                                    {item.epice && (
+                                      <span className="bg-red-100 text-red-600 p-1.5 rounded-full" title="Épicé">
+                                        <Flame className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                <h3
                                   className="text-xl font-bold mb-2 group-hover:text-current transition-colors"
                                   style={{ color: menu.couleur_secondaire }}
                                 >
-                                  {item.nom}
+                                  {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                    ? itemTranslations[item.id].nom
+                                    : item.nom}
                                 </h3>
-                                
-                                {item.description && (
-                                  <p className="text-gray-600 text-sm mb-4 flex-1 line-clamp-3">{item.description}</p>
+
+                                {(currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                  ? itemTranslations[item.id].description
+                                  : item.description) && (
+                                  <p className="text-gray-600 text-sm mb-4 flex-1 line-clamp-3">
+                                    {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                      ? itemTranslations[item.id].description
+                                      : item.description}
+                                  </p>
                                 )}
                                 
                                 {item.allergenes.length > 0 && (
@@ -1087,23 +1266,14 @@ const MenuPreview = () => {
                                   </p>
                                 )}
 
-                                {/* Price and Add Button */}
-                                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                  <span 
+                                {/* Price */}
+                                <div className="flex items-center pt-4 border-t border-gray-100">
+                                  <span
                                     className="text-2xl font-bold"
                                     style={{ color: menu.couleur_primaire }}
                                   >
                                     {item.prix.toFixed(2)} €
                                   </span>
-                                  
-                                  <button 
-                                    className="px-6 py-2 rounded-full text-white font-medium hover:scale-105 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
-                                    style={{ 
-                                      backgroundColor: menu.couleur_primaire,
-                                    }}
-                                  >
-                                    Ajouter
-                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -1275,7 +1445,7 @@ const MenuPreview = () => {
                 <button
                   type="submit"
                   disabled={reservationLoading}
-                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+                  className={`flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}
                   style={{ backgroundColor: menu.couleur_primaire }}
                 >
                   {reservationLoading ? (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Download, Copy, Check, Loader2, QrCode, Palette, Link2, ArrowLeft } from 'lucide-react';
+import { Download, Copy, Check, Loader2, QrCode, Palette, Link2, ArrowLeft, Upload, X } from 'lucide-react';
 import QRCode from 'qrcode';
 import { supabase, Menu, RestaurantProfile } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,7 +15,10 @@ const QRCodePage = () => {
   const [backgroundColor, setBackgroundColor] = useState('#ffffff');
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const colorPresets = [
     { name: 'Noir classique', color: '#000000', bg: '#ffffff' },
@@ -36,7 +39,7 @@ const QRCodePage = () => {
     if (restaurant) {
       generateQRCode();
     }
-  }, [restaurant, qrCodeColor, backgroundColor]);
+  }, [restaurant, qrCodeColor, backgroundColor, logoUrl]);
 
   const loadRestaurantProfile = async () => {
     if (!user) return;
@@ -68,16 +71,50 @@ const QRCodePage = () => {
     setGenerating(true);
     try {
       const menuUrlWithTracking = `https://a.cloudmenu.fr/m/${restaurant.slug}?ref=qr`;
-      const dataUrl = await QRCode.toDataURL(menuUrlWithTracking, {
+
+      // Create canvas
+      const canvas = document.createElement('canvas');
+
+      // Generate QR code with high error correction (allows logo overlay)
+      await QRCode.toCanvas(canvas, menuUrlWithTracking, {
         width: 400,
         margin: 2,
         color: {
           dark: qrCodeColor,
           light: backgroundColor
         },
-        errorCorrectionLevel: 'M'
+        errorCorrectionLevel: 'H' // High error correction for logo overlay
       });
 
+      // If logo is provided, overlay it on the QR code
+      if (logoUrl) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          const logo = new Image();
+          logo.crossOrigin = 'anonymous';
+
+          await new Promise((resolve, reject) => {
+            logo.onload = () => {
+              const logoSize = canvas.width * 0.2; // Logo is 20% of QR code size
+              const x = (canvas.width - logoSize) / 2;
+              const y = (canvas.height - logoSize) / 2;
+
+              // Draw white background for logo
+              ctx.fillStyle = 'white';
+              ctx.fillRect(x - 5, y - 5, logoSize + 10, logoSize + 10);
+
+              // Draw logo
+              ctx.drawImage(logo, x, y, logoSize, logoSize);
+              resolve(null);
+            };
+            logo.onerror = reject;
+            logo.src = logoUrl;
+          });
+        }
+      }
+
+      // Convert canvas to data URL
+      const dataUrl = canvas.toDataURL('image/png');
       setQrCodeDataUrl(dataUrl);
     } catch (error) {
       console.error('Erreur lors de la génération du QR code:', error);
@@ -110,6 +147,58 @@ const QRCodePage = () => {
   const applyColorPreset = (preset: typeof colorPresets[0]) => {
     setQrCodeColor(preset.color);
     setBackgroundColor(preset.bg);
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner un fichier image valide');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Le fichier doit faire moins de 2MB');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      // Upload to Supabase storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `qr-logos/${user?.id}-${Date.now()}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from('cloudmenu')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (error) throw error;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('cloudmenu')
+        .getPublicUrl(fileName);
+
+      setLogoUrl(urlData.publicUrl);
+    } catch (error) {
+      console.error('Erreur lors du téléchargement du logo:', error);
+      alert('Erreur lors du téléchargement du logo');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoUrl('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   if (loading) {
@@ -282,6 +371,68 @@ const QRCodePage = () => {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Logo Upload */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">Logo au centre du QR code</h3>
+
+                {logoUrl ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <img
+                        src={logoUrl}
+                        alt="Logo preview"
+                        className="w-12 h-12 object-contain rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">Logo ajouté</p>
+                        <p className="text-xs text-gray-500">Le logo apparaîtra au centre du QR code</p>
+                      </div>
+                      <button
+                        onClick={removeLogo}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Retirer le logo"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                      id="logo-upload"
+                    />
+                    <label
+                      htmlFor="logo-upload"
+                      className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                        uploadingLogo
+                          ? 'border-gray-300 bg-gray-50'
+                          : 'border-gray-300 hover:border-orange-400 hover:bg-orange-50'
+                      }`}
+                    >
+                      {uploadingLogo ? (
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span className="text-sm">Téléchargement...</span>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center space-y-2 text-gray-600">
+                          <Upload className="w-8 h-8" />
+                          <div className="text-center">
+                            <p className="text-sm font-medium">Ajouter un logo</p>
+                            <p className="text-xs text-gray-500">PNG, JPG jusqu'à 2MB</p>
+                          </div>
+                        </div>
+                      )}
+                    </label>
+                  </div>
+                )}
               </div>
             </div>
           </div>
