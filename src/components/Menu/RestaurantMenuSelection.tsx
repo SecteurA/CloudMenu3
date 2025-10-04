@@ -163,7 +163,9 @@ export default function RestaurantMenuSelection() {
   const availableLanguages = Array.from(new Set(menus.map(m => m.language || 'fr')));
 
   const getMenuForLanguage = (group: MenuGroup): Menu => {
-    return group.languages.find(m => m.language === selectedLanguage)!;
+    // Since translations are stored separately, always return the base menu
+    // The translated content will be fetched from menu_languages table
+    return group.languages[0];
   };
 
   const formatWhatsAppLink = (whatsapp: string) => {
@@ -626,7 +628,6 @@ export default function RestaurantMenuSelection() {
               {groupedMenus.map((group) => {
                 const menu = getMenuForLanguage(group);
                 const menuSlugPart = menu.slug.split('/').pop();
-                const hasMultipleLanguages = group.languages.length > 1;
                 const translatedTitle = getTranslatedMenuTitle(menu.id, selectedLanguage, group.menu_name);
 
                 return (
@@ -637,14 +638,9 @@ export default function RestaurantMenuSelection() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          {hasMultipleLanguages && (
-                            <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
-                          )}
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {translatedTitle}
-                          </h3>
-                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                          {translatedTitle}
+                        </h3>
                         {group.description && (
                           <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
                         )}
