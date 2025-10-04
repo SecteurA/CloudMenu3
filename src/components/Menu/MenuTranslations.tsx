@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Globe, Plus, Trash2, Loader2, Check, X } from 'lucide-react';
+import { Globe, Plus, Trash2, Loader2, Check, X, Pencil, Save } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
 interface MenuTranslationsProps {
   menuId: string;
   defaultLanguage: string;
+  menuName: string;
 }
 
 interface MenuLanguage {
   id: string;
   language_code: string;
   is_default: boolean;
+  menu_title: string;
 }
 
 const AVAILABLE_LANGUAGES = [
@@ -26,12 +28,14 @@ const AVAILABLE_LANGUAGES = [
   { code: 'nl', name: 'Nederlands', flag: '🇳🇱' },
 ];
 
-const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLanguage }) => {
+const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLanguage, menuName }) => {
   const [languages, setLanguages] = useState<MenuLanguage[]>([]);
   const [loading, setLoading] = useState(true);
   const [translating, setTranslating] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [titleEditValue, setTitleEditValue] = useState('');
 
   useEffect(() => {
     loadLanguages();
@@ -95,6 +99,40 @@ const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLang
       showMessage('error', error.message || 'Erreur lors de la traduction');
     } finally {
       setTranslating(null);
+    }
+  };
+
+  const startEditingTitle = (languageId: string, currentTitle: string) => {
+    setEditingTitle(languageId);
+    setTitleEditValue(currentTitle);
+  };
+
+  const cancelEditingTitle = () => {
+    setEditingTitle(null);
+    setTitleEditValue('');
+  };
+
+  const saveMenuTitle = async (languageId: string) => {
+    if (!titleEditValue.trim()) {
+      showMessage('error', 'Le titre ne peut pas être vide');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('menu_languages')
+        .update({ menu_title: titleEditValue.trim() })
+        .eq('id', languageId);
+
+      if (error) throw error;
+
+      showMessage('success', 'Titre mis à jour');
+      await loadLanguages();
+      setEditingTitle(null);
+      setTitleEditValue('');
+    } catch (error) {
+      console.error('Error updating menu title:', error);
+      showMessage('error', 'Erreur lors de la mise à jour');
     }
   };
 
@@ -228,7 +266,7 @@ const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLang
         </div>
       )}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {languages.length === 0 ? (
           <p className="text-sm text-gray-600 py-4 text-center">
             Aucune traduction ajoutée. Ajoutez des langues pour traduire automatiquement votre menu.
@@ -236,22 +274,71 @@ const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLang
         ) : (
           languages.map(lang => {
             const languageInfo = AVAILABLE_LANGUAGES.find(l => l.code === lang.language_code);
+            const isEditing = editingTitle === lang.id;
+
             return (
               <div
                 key={lang.id}
-                className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
+                className="p-3 sm:p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
               >
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{languageInfo?.flag || '🌐'}</span>
-                  <span className="font-medium text-gray-900">{languageInfo?.name || lang.language_code}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
+                    <span className="text-2xl flex-shrink-0">{languageInfo?.flag || '🌐'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 mb-1">
+                        {languageInfo?.name || lang.language_code}
+                      </div>
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={titleEditValue}
+                            onChange={(e) => setTitleEditValue(e.target.value)}
+                            placeholder="Titre du menu"
+                            className="flex-1 px-3 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => saveMenuTitle(lang.id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Sauvegarder"
+                          >
+                            <Save size={16} />
+                          </button>
+                          <button
+                            onClick={cancelEditingTitle}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Annuler"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="truncate">
+                            {lang.menu_title || menuName}
+                          </span>
+                          <button
+                            onClick={() => startEditingTitle(lang.id, lang.menu_title || menuName)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors flex-shrink-0"
+                            title="Modifier le titre"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {!isEditing && (
+                    <button
+                      onClick={() => deleteLanguage(lang.id, lang.language_code)}
+                      className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50 flex-shrink-0"
+                      title="Supprimer cette traduction"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
-                <button
-                  onClick={() => deleteLanguage(lang.id, lang.language_code)}
-                  className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50"
-                  title="Supprimer cette traduction"
-                >
-                  <Trash2 size={16} />
-                </button>
               </div>
             );
           })

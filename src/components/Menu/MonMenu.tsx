@@ -485,7 +485,7 @@ const MonMenu = () => {
 
           {/* Translations - Only show for existing menus */}
           {!isNewMenu && existingMenu && (
-            <MenuTranslations menuId={existingMenu.id} defaultLanguage={existingMenu.default_language || 'fr'} />
+            <MenuTranslations menuId={existingMenu.id} defaultLanguage={existingMenu.default_language || 'fr'} menuName={existingMenu.nom} />
           )}
 
           {/* Design */}

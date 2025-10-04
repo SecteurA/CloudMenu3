@@ -10,6 +10,7 @@ interface MenuLanguage {
   id: string;
   language_code: string;
   is_default: boolean;
+  menu_title: string;
 }
 
 interface CategoryTranslation {
@@ -60,6 +61,7 @@ export default function MenuManagement() {
   const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
   const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
   const [itemTranslations, setItemTranslations] = useState<Record<string, MenuItemTranslation>>({});
+  const [currentMenuTitle, setCurrentMenuTitle] = useState<string>('');
 
   // États pour l'édition d'éléments
   const [editingItemData, setEditingItemData] = useState<Partial<MenuItemUpdate>>({});
@@ -189,10 +191,19 @@ export default function MenuManagement() {
     if (!menu || !currentLanguage || currentLanguage === menu.default_language) {
       setCategoryTranslations({});
       setItemTranslations({});
+      setCurrentMenuTitle(menu?.nom || '');
       return;
     }
 
     try {
+      // Load menu title translation
+      const currentLang = availableLanguages.find(l => l.language_code === currentLanguage);
+      if (currentLang?.menu_title) {
+        setCurrentMenuTitle(currentLang.menu_title);
+      } else {
+        setCurrentMenuTitle(menu.nom);
+      }
+
       const categoryIds = categories.map(c => c.id);
 
       // Load category translations
@@ -803,7 +814,7 @@ export default function MenuManagement() {
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{menu.nom}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentMenuTitle || menu.nom}</h2>
               <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
             </div>
             <div className="flex gap-2 flex-shrink-0">

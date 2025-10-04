@@ -22,6 +22,7 @@ interface MenuLanguage {
   id: string;
   language_code: string;
   is_default: boolean;
+  menu_title: string;
 }
 
 interface CategoryTranslation {
@@ -61,6 +62,7 @@ const MenuPreview = () => {
   const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
   const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
   const [itemTranslations, setItemTranslations] = useState<Record<string, ItemTranslation>>({});
+  const [currentMenuTitle, setCurrentMenuTitle] = useState<string>('');
   
   // États pour la réservation
   const [showReservationForm, setShowReservationForm] = useState(false);
@@ -284,10 +286,19 @@ const MenuPreview = () => {
     if (!menu || !languageCode || languageCode === (menu.default_language || 'fr')) {
       setCategoryTranslations({});
       setItemTranslations({});
+      setCurrentMenuTitle(menu?.menu_name || menu?.nom || '');
       return;
     }
 
     try {
+      // Load menu title translation
+      const currentLang = availableLanguages.find(l => l.language_code === languageCode);
+      if (currentLang?.menu_title) {
+        setCurrentMenuTitle(currentLang.menu_title);
+      } else {
+        setCurrentMenuTitle(menu.menu_name || menu.nom);
+      }
+
       const categoryIds = categories.map(c => c.id);
 
       // Load category translations
@@ -526,7 +537,7 @@ const MenuPreview = () => {
                 {restaurantProfile?.restaurant_name || menu.nom}
               </h1>
               <p className="text-2xl font-semibold text-gray-800 mb-2">
-                {menu.menu_name || menu.nom}
+                {currentMenuTitle || menu.menu_name || menu.nom}
               </p>
               <p className="text-xl text-gray-600 mb-2">
                 Menu Digital Interactif
