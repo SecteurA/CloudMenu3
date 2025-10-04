@@ -248,31 +248,23 @@ const WelcomeCard = () => {
     if (!user) return;
 
     try {
-      // Get first menu and restaurant profile
-      const { data: menu, error: menuError } = await supabase
-        .from('menus')
-        .select('nom, slug')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (menuError || !menu) return;
-
+      // Get restaurant profile
       const { data: profile } = await supabase
         .from('restaurant_profiles')
-        .select('name')
+        .select('restaurant_name, slug')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const name = profile?.name || menu.nom || 'Mon Restaurant';
-      const slug = menu.slug || menu.nom;
+      if (!profile?.slug) return;
+
+      const name = profile.restaurant_name || 'Mon Restaurant';
+      const restaurantSlug = profile.slug;
 
       setRestaurantName(name);
-      setMenuSlug(slug);
+      setMenuSlug(restaurantSlug);
 
-      // Generate QR code
-      const menuUrl = `${window.location.origin}/menu/${slug}?source=qr_scan`;
+      // Generate QR code with restaurant landing page URL
+      const menuUrl = `${window.location.origin}/m/${restaurantSlug}?ref=qr`;
 
       if (qrCanvasRef.current) {
         await QRCodeLib.toCanvas(qrCanvasRef.current, menuUrl, {
