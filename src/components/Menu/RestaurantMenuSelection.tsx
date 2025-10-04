@@ -603,14 +603,6 @@ export default function RestaurantMenuSelection() {
                 <span>{restaurant.address}</span>
               </div>
             )}
-            {restaurant.telephone && (
-              <div className="flex items-start space-x-2 text-sm text-gray-600">
-                <Phone size={16} className="flex-shrink-0 mt-0.5" />
-                <a href={`tel:${restaurant.telephone}`} className="hover:text-orange-600">
-                  {restaurant.telephone}
-                </a>
-              </div>
-            )}
             {restaurant.hours && (
               <div className="flex items-start space-x-2 text-sm text-gray-600">
                 <Clock size={16} className="flex-shrink-0 mt-0.5" />
