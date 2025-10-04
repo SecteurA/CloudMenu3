@@ -5,17 +5,17 @@ import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCirc
 import QRCode from 'qrcode';
 
 const LANGUAGES = {
-  fr: { name: 'Français', flag: '🇫🇷' },
-  en: { name: 'English', flag: '🇬🇧' },
-  es: { name: 'Español', flag: '🇪🇸' },
-  de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' },
-  pt: { name: 'Português', flag: '🇵🇹' },
-  ar: { name: 'العربية', flag: '🇸🇦' },
-  zh: { name: '中文', flag: '🇨🇳' },
-  ja: { name: '日本語', flag: '🇯🇵' },
-  ru: { name: 'Русский', flag: '🇷🇺' },
-  nl: { name: 'Nederlands', flag: '🇳🇱' }
+  fr: { name: 'Français', flag: '🇫🇷', rtl: false },
+  en: { name: 'English', flag: '🇬🇧', rtl: false },
+  es: { name: 'Español', flag: '🇪🇸', rtl: false },
+  de: { name: 'Deutsch', flag: '🇩🇪', rtl: false },
+  it: { name: 'Italiano', flag: '🇮🇹', rtl: false },
+  pt: { name: 'Português', flag: '🇵🇹', rtl: false },
+  ar: { name: 'العربية', flag: '🇸🇦', rtl: true },
+  zh: { name: '中文', flag: '🇨🇳', rtl: false },
+  ja: { name: '日本語', flag: '🇯🇵', rtl: false },
+  ru: { name: 'Русский', flag: '🇷🇺', rtl: false },
+  nl: { name: 'Nederlands', flag: '🇳🇱', rtl: false }
 };
 
 interface MenuLanguage {
@@ -486,6 +486,10 @@ const MenuPreview = () => {
     return tomorrow.toISOString().split('T')[0];
   };
 
+  const isRTL = () => {
+    return LANGUAGES[currentLanguage as keyof typeof LANGUAGES]?.rtl || false;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -575,11 +579,12 @@ const MenuPreview = () => {
   }
 
   return (
-    <div 
+    <div
       className="min-h-screen"
-      style={{ 
+      dir={isRTL() ? 'rtl' : 'ltr'}
+      style={{
         backgroundColor: menu.couleur_fond,
-        color: menu.couleur_texte 
+        color: menu.couleur_texte
       }}
     >
       {/* Navbar fixe */}
@@ -595,7 +600,7 @@ const MenuPreview = () => {
           </h1>
 
           {/* Desktop: Language selector and Contact icons */}
-          <div className="hidden lg:flex items-center space-x-2">
+          <div className={`hidden lg:flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {/* Language Selector */}
             {availableLanguages.length > 0 && (
               <div className="relative">
@@ -653,7 +658,7 @@ const MenuPreview = () => {
             <div className="w-px h-6 bg-gray-300"></div>
 
             {/* Contact icons */}
-            <div className="flex items-center space-x-2">
+            <div className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {restaurantProfile?.telephone && (
               <a
                 href={`tel:${restaurantProfile?.telephone}`}
@@ -717,7 +722,7 @@ const MenuPreview = () => {
           </div>
 
           {/* Mobile: Reservation button, Language selector, and Hamburger menu */}
-          <div className="lg:hidden flex items-center space-x-2">
+          <div className={`lg:hidden flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {/* Reservation button - highlighted */}
             <button
               onClick={() => setShowReservationForm(true)}
@@ -805,7 +810,7 @@ const MenuPreview = () => {
                 {restaurantProfile?.telephone && (
                   <a
                     href={`tel:${restaurantProfile?.telephone}`}
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Phone size={18} className="text-blue-600" />
@@ -823,7 +828,7 @@ const MenuPreview = () => {
                     href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <MessageCircle size={18} className="text-green-600" />
@@ -841,7 +846,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.instagram}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Instagram size={18} className="text-pink-600" />
@@ -859,7 +864,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.facebook}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
                       <Facebook size={18} className="text-blue-700" />
@@ -877,7 +882,7 @@ const MenuPreview = () => {
                     href={restaurantProfile?.tiktok}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
                   >
                     <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-bold">T</span>
@@ -919,9 +924,9 @@ const MenuPreview = () => {
         {/* Navigation des catégories - Style Glovo */}
         {categories.length > 0 && (
           <div className="sticky top-16 bg-white z-20 -mx-4 px-4 py-3 mb-8 border-b border-gray-200 shadow-sm lg:hidden">
-            <div 
+            <div
               ref={navRef}
-              className="flex space-x-8 overflow-x-auto scrollbar-hide items-center"
+              className={`flex ${isRTL() ? 'space-x-reverse' : ''} space-x-8 overflow-x-auto scrollbar-hide items-center`}
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {categories.map((category) => (
@@ -954,7 +959,7 @@ const MenuPreview = () => {
           <div className="text-center">
             <button
               onClick={() => setShowReservationForm(true)}
-              className="bg-orange-600 text-white px-8 py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center space-x-3 font-medium text-lg mx-auto"
+              className={`bg-orange-600 text-white px-8 py-4 rounded-xl shadow-lg hover:bg-orange-700 transition-colors flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-3 font-medium text-lg mx-auto`}
               style={{ backgroundColor: menu.couleur_primaire }}
             >
               <Calendar size={24} />
@@ -1065,7 +1070,7 @@ const MenuPreview = () => {
                         <div className="lg:hidden">
                           {items.map((item) => (
                             <div key={item.id} className="px-4 py-6 border-b border-gray-100 last:border-b-0">
-                              <div className="flex items-start space-x-4">
+                              <div className={`flex items-start ${isRTL() ? 'space-x-reverse' : ''} space-x-4`}>
                                 {/* Image - only show if exists */}
                                 {item.image_url && (
                                   <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
@@ -1080,7 +1085,7 @@ const MenuPreview = () => {
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 pr-2">
+                                    <div className={`flex-1 ${isRTL() ? 'pl-2' : 'pr-2'}`}>
                                       <h3 
                                         className="font-bold text-lg leading-tight"
                                         style={{ color: menu.couleur_secondaire }}
@@ -1091,7 +1096,7 @@ const MenuPreview = () => {
                                       </h3>
                                       
                                       {/* Icônes diététiques */}
-                                      <div className="flex items-center space-x-1 mt-1">
+                                      <div className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-1 mt-1`}>
                                         {item.vegetarien && (
                                           <span className="bg-green-100 text-green-700 p-1 rounded-full" title="Végétarien">
                                             <Leaf className="w-3 h-3" />
@@ -1115,8 +1120,8 @@ const MenuPreview = () => {
                                       </div>
                                     </div>
 
-                                    <span 
-                                      className="text-xl font-bold flex-shrink-0 ml-2"
+                                    <span
+                                      className={`text-xl font-bold flex-shrink-0 ${isRTL() ? 'mr-2' : 'ml-2'}`}
                                       style={{ color: menu.couleur_primaire }}
                                     >
                                       {item.prix.toFixed(2)} €
@@ -1158,7 +1163,7 @@ const MenuPreview = () => {
                                   />
 
                                   {/* Dietary Icons Overlay */}
-                                  <div className="absolute top-3 left-3 flex space-x-1">
+                                  <div className={`absolute top-3 ${isRTL() ? 'right-3' : 'left-3'} flex ${isRTL() ? 'space-x-reverse' : ''} space-x-1`}>
                                     {item.vegetarien && (
                                       <span className="bg-white/90 backdrop-blur-sm text-green-600 p-1.5 rounded-full shadow-sm" title="Végétarien">
                                         <Leaf className="w-4 h-4" />
@@ -1187,7 +1192,7 @@ const MenuPreview = () => {
                               <div className="p-6 flex-1 flex flex-col">
                                 {/* Dietary Icons - only show when no image */}
                                 {!item.image_url && (item.vegetarien || item.vegan || item.sans_gluten || item.epice) && (
-                                  <div className="flex space-x-1 mb-3">
+                                  <div className={`flex ${isRTL() ? 'space-x-reverse' : ''} space-x-1 mb-3`}>
                                     {item.vegetarien && (
                                       <span className="bg-green-100 text-green-600 p-1.5 rounded-full" title="Végétarien">
                                         <Leaf className="w-4 h-4" />
@@ -1415,7 +1420,7 @@ const MenuPreview = () => {
                 <button
                   type="submit"
                   disabled={reservationLoading}
-                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+                  className={`flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}
                   style={{ backgroundColor: menu.couleur_primaire }}
                 >
                   {reservationLoading ? (
