@@ -37,10 +37,10 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
+    const anthropicKey = Deno.env.get('CLAUDE_API_KEY');
 
     if (!anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
+      throw new Error('CLAUDE_API_KEY is not configured');
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
