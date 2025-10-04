@@ -36,7 +36,8 @@ const MonMenu = () => {
     couleur_texte: '#374151',
     couleur_fond: '#ffffff',
     afficher_powered_by: true,
-    lien_cloudmenu: true
+    lien_cloudmenu: true,
+    currency_symbol: '€'
   });
 
   const [loading, setLoading] = useState(false);
@@ -117,7 +118,8 @@ const MonMenu = () => {
         couleur_texte: data.couleur_texte,
         couleur_fond: data.couleur_fond,
         afficher_powered_by: data.afficher_powered_by,
-        lien_cloudmenu: data.lien_cloudmenu
+        lien_cloudmenu: data.lien_cloudmenu,
+        currency_symbol: data.currency_symbol || '€'
       });
     } catch (error) {
       console.error('Erreur lors du chargement du menu:', error);
@@ -417,6 +419,23 @@ const MonMenu = () => {
                   rows={3}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-orange-500 focus:border-orange-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                  Symbole de devise
+                </label>
+                <input
+                  type="text"
+                  value={menuConfig.currency_symbol}
+                  onChange={(e) => handleInputChange('currency_symbol', e.target.value)}
+                  placeholder="€"
+                  maxLength={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Symbole qui s'affichera à côté des prix (ex: €, $, £, CHF, DH)
+                </p>
               </div>
 
               <div>

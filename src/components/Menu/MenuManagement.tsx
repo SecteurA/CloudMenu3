@@ -1076,7 +1076,7 @@ export default function MenuManagement() {
                                 />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-1">Prix (€)</label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Prix ({menu.currency_symbol || '€'})</label>
                                 <input
                                   type="number"
                                   value={editingItemData.prix || ''}
@@ -1158,7 +1158,7 @@ export default function MenuManagement() {
                           </p>
                         )}
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                          <span className="font-semibold text-orange-600 text-sm sm:text-base">{item.prix.toFixed(2)} €</span>
+                          <span className="font-semibold text-orange-600 text-sm sm:text-base">{item.prix.toFixed(2)} {menu.currency_symbol || '€'}</span>
                           {item.allergenes.length > 0 && (
                             <span className="text-xs text-gray-500 break-words">
                               Allergènes: {item.allergenes.join(', ')}
@@ -1318,7 +1318,7 @@ export default function MenuManagement() {
                       </div>
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
                         <div className="flex-1">
-                          <label className="block text-xs font-medium text-gray-700 mb-2">Prix (€)</label>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Prix ({menu.currency_symbol || '€'})</label>
                         <input
                           type="number"
                           value={newItem.prix || ''}

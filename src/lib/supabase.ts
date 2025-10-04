@@ -89,6 +89,7 @@ export interface Menu {
   instagram: string;
   facebook: string;
   tiktok: string;
+  currency_symbol: string;
 }
 
 export interface MenuInsert {
@@ -112,6 +113,7 @@ export interface MenuInsert {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+  currency_symbol?: string;
 }
 
 export interface MenuUpdate {
@@ -133,6 +135,7 @@ export interface MenuUpdate {
   instagram?: string;
   facebook?: string;
   tiktok?: string;
+  currency_symbol?: string;
 }
 
 // Types pour les catégories

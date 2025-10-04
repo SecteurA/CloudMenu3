@@ -1124,7 +1124,7 @@ const MenuPreview = () => {
                                       className={`text-xl font-bold flex-shrink-0 ${isRTL() ? 'mr-2' : 'ml-2'}`}
                                       style={{ color: menu.couleur_primaire }}
                                     >
-                                      {item.prix.toFixed(2)} €
+                                      {item.prix.toFixed(2)} {menu.currency_symbol || '€'}
                                     </span>
                                   </div>
 
