@@ -70,7 +70,7 @@ const QRCodePage = () => {
 
     setGenerating(true);
     try {
-      const menuUrlWithTracking = `https://a.cloudmenu.fr/m/${restaurant.slug}?ref=qr`;
+      const menuUrlWithTracking = `${window.location.origin}/m/${restaurant.slug}?ref=qr`;
 
       // Create canvas
       const canvas = document.createElement('canvas');
@@ -232,7 +232,7 @@ const QRCodePage = () => {
     );
   }
 
-  const menuUrl = restaurant ? `https://a.cloudmenu.fr/m/${restaurant.slug}` : '';
+  const menuUrl = restaurant ? `${window.location.origin}/m/${restaurant.slug}` : '';
 
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
