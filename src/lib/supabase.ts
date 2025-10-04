@@ -22,6 +22,7 @@ export interface RestaurantProfile {
   description: string;
   banner_url: string;
   logo_url: string;
+  hero_background_color: string;
   telephone: string;
   whatsapp: string;
   instagram: string;
@@ -40,6 +41,7 @@ export interface RestaurantProfileInsert {
   description?: string;
   banner_url?: string;
   logo_url?: string;
+  hero_background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -55,6 +57,7 @@ export interface RestaurantProfileUpdate {
   description?: string;
   banner_url?: string;
   logo_url?: string;
+  hero_background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;

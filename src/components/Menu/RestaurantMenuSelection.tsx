@@ -564,15 +564,31 @@ export default function RestaurantMenuSelection() {
 
       {/* Main content with padding for fixed navbar */}
       <div className="pt-16">
-        {restaurant.banner_url && (
-          <div className="h-48 bg-gray-200 overflow-hidden">
+        {/* Hero section with logo or banner */}
+        <div
+          className="h-48 flex items-center justify-center overflow-hidden"
+          style={{ backgroundColor: restaurant.hero_background_color || '#f3f4f6' }}
+        >
+          {restaurant.logo_url ? (
+            <div className="flex items-center justify-center h-full px-4">
+              <img
+                src={restaurant.logo_url}
+                alt={restaurant.restaurant_name}
+                className="max-h-32 max-w-full object-contain"
+              />
+            </div>
+          ) : restaurant.banner_url ? (
             <img
               src={restaurant.banner_url}
               alt={restaurant.restaurant_name}
               className="w-full h-full object-cover"
             />
-          </div>
-        )}
+          ) : (
+            <div className="text-center px-4">
+              <h2 className="text-2xl font-bold text-gray-900">{restaurant.restaurant_name}</h2>
+            </div>
+          )}
+        </div>
 
         <div className="px-4 py-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">

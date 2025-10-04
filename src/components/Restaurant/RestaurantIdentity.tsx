@@ -20,6 +20,7 @@ export default function RestaurantIdentity() {
     description: '',
     banner_url: '',
     logo_url: '',
+    hero_background_color: '#f3f4f6',
     telephone: '',
     whatsapp: '',
     instagram: '',
@@ -58,6 +59,7 @@ export default function RestaurantIdentity() {
           description: data.description || '',
           banner_url: data.banner_url || '',
           logo_url: data.logo_url || '',
+          hero_background_color: data.hero_background_color || '#f3f4f6',
           telephone: data.telephone || '',
           whatsapp: data.whatsapp || '',
           instagram: data.instagram || '',
@@ -133,6 +135,7 @@ export default function RestaurantIdentity() {
           description: formData.description,
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
+          hero_background_color: formData.hero_background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
@@ -158,6 +161,7 @@ export default function RestaurantIdentity() {
           description: formData.description,
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
+          hero_background_color: formData.hero_background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
@@ -371,6 +375,30 @@ export default function RestaurantIdentity() {
                     />
                   </label>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Couleur de fond du hero
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.hero_background_color}
+                    onChange={(e) => handleInputChange('hero_background_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.hero_background_color}
+                      onChange={(e) => handleInputChange('hero_background_color', e.target.value)}
+                      placeholder="#f3f4f6"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Couleur d'arrière-plan pour la section hero</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
