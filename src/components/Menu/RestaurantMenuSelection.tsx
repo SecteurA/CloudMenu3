@@ -6,14 +6,21 @@ import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
 import RestaurantFooter from './RestaurantFooter';
 import QRCode from 'qrcode';
+import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
 
-const LANGUAGES = {
+const LANGUAGES: Record<string, { name: string; flag: string }> = {
   fr: { name: 'Français', flag: '🇫🇷' },
   en: { name: 'English', flag: '🇬🇧' },
   es: { name: 'Español', flag: '🇪🇸' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
   it: { name: 'Italiano', flag: '🇮🇹' },
-  ar: { name: 'العربية', flag: '🇸🇦' }
+  ar: { name: 'العربية', flag: '🇸🇦' },
+  ja: { name: '日本語', flag: '🇯🇵' },
+  zh: { name: '中文', flag: '🇨🇳' },
+  pt: { name: 'Português', flag: '🇵🇹' },
+  ru: { name: 'Русский', flag: '🇷🇺' },
+  hi: { name: 'हिन्दी', flag: '🇮🇳' },
+  ko: { name: '한국어', flag: '🇰🇷' }
 };
 
 const getBrowserLanguage = (): string => {
@@ -40,6 +47,11 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+
+  const { translations: interfaceTranslations, loading: translationsLoading } = useInterfaceTranslations(
+    selectedLanguage,
+    ['our_menus', 'no_menus_available']
+  );
 
   useEffect(() => {
     const checkMobile = () => {
@@ -619,23 +631,13 @@ export default function RestaurantMenuSelection() {
 
         <div className="px-4 py-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
-            {selectedLanguage === 'fr' ? 'Nos Menus' :
-             selectedLanguage === 'en' ? 'Our Menus' :
-             selectedLanguage === 'es' ? 'Nuestros Menús' :
-             selectedLanguage === 'de' ? 'Unsere Menüs' :
-             selectedLanguage === 'it' ? 'I Nostri Menu' :
-             selectedLanguage === 'ar' ? 'قوائمنا' : 'Nos Menus'}
+            {getTranslation(interfaceTranslations, 'our_menus', 'Nos Menus')}
           </h2>
           {groupedMenus.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <MenuIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <p className="text-gray-600">
-                {selectedLanguage === 'fr' ? 'Aucun menu disponible pour le moment.' :
-                 selectedLanguage === 'en' ? 'No menus available at the moment.' :
-                 selectedLanguage === 'es' ? 'No hay menús disponibles en este momento.' :
-                 selectedLanguage === 'de' ? 'Derzeit sind keine Menüs verfügbar.' :
-                 selectedLanguage === 'it' ? 'Nessun menu disponibile al momento.' :
-                 selectedLanguage === 'ar' ? 'لا توجد قوائم متاحة في الوقت الحالي.' : 'Aucun menu disponible pour le moment.'}
+                {getTranslation(interfaceTranslations, 'no_menus_available', 'Aucun menu disponible pour le moment.')}
               </p>
             </div>
           ) : (

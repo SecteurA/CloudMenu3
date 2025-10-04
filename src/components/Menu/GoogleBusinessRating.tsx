@@ -1,5 +1,6 @@
 import React from 'react';
 import { Star, ExternalLink } from 'lucide-react';
+import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
 
 interface GoogleBusinessRatingProps {
   googleBusinessUrl: string;
@@ -9,36 +10,10 @@ interface GoogleBusinessRatingProps {
 export default function GoogleBusinessRating({ googleBusinessUrl, selectedLanguage }: GoogleBusinessRatingProps) {
   if (!googleBusinessUrl) return null;
 
-  const getTranslation = (lang: string) => {
-    const translations: Record<string, { title: string; cta: string }> = {
-      fr: {
-        title: 'Laissez-nous un avis',
-        cta: 'Écrire un avis sur Google'
-      },
-      en: {
-        title: 'Leave us a review',
-        cta: 'Write a review on Google'
-      },
-      es: {
-        title: 'Déjanos una reseña',
-        cta: 'Escribir una reseña en Google'
-      },
-      de: {
-        title: 'Hinterlassen Sie uns eine Bewertung',
-        cta: 'Bewertung auf Google schreiben'
-      },
-      it: {
-        title: 'Lasciaci una recensione',
-        cta: 'Scrivi una recensione su Google'
-      },
-      ar: {
-        title: 'اترك لنا تقييماً',
-        cta: 'اكتب تقييماً على جوجل'
-      }
-    };
-
-    return translations[lang] || translations.fr;
-  };
+  const { translations: interfaceTranslations } = useInterfaceTranslations(
+    selectedLanguage,
+    ['leave_review', 'write_review_google']
+  );
 
   const getReviewUrl = (url: string) => {
     const reviewParam = '/review';
@@ -51,7 +26,8 @@ export default function GoogleBusinessRating({ googleBusinessUrl, selectedLangua
     return url.endsWith('/') ? `${url}review` : `${url}/review`;
   };
 
-  const { title, cta } = getTranslation(selectedLanguage);
+  const title = getTranslation(interfaceTranslations, 'leave_review', 'Laissez-nous un avis');
+  const cta = getTranslation(interfaceTranslations, 'write_review_google', 'Écrire un avis sur Google');
   const reviewUrl = getReviewUrl(googleBusinessUrl);
 
   return (

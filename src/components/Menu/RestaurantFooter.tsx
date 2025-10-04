@@ -1,6 +1,7 @@
 import React from 'react';
 import { Phone, MapPin, Clock, Instagram, Facebook, Music, MessageCircle } from 'lucide-react';
 import { RestaurantProfile } from '../../lib/supabase';
+import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
 
 interface RestaurantFooterProps {
   restaurant: RestaurantProfile;
@@ -8,61 +9,21 @@ interface RestaurantFooterProps {
 }
 
 export default function RestaurantFooter({ restaurant, selectedLanguage }: RestaurantFooterProps) {
-  const getTranslations = (lang: string) => {
-    const translations: Record<string, { contact: string; followUs: string; poweredBy: string; location: string; rights: string }> = {
-      fr: {
-        contact: 'Contact',
-        followUs: 'Suivez-nous',
-        poweredBy: 'Propulsé par',
-        location: 'Notre emplacement',
-        rights: 'Tous droits réservés.'
-      },
-      en: {
-        contact: 'Contact',
-        followUs: 'Follow us',
-        poweredBy: 'Powered by',
-        location: 'Our location',
-        rights: 'All rights reserved.'
-      },
-      es: {
-        contact: 'Contacto',
-        followUs: 'Síguenos',
-        poweredBy: 'Desarrollado por',
-        location: 'Nuestra ubicación',
-        rights: 'Todos los derechos reservados.'
-      },
-      de: {
-        contact: 'Kontakt',
-        followUs: 'Folge uns',
-        poweredBy: 'Unterstützt von',
-        location: 'Unser Standort',
-        rights: 'Alle Rechte vorbehalten.'
-      },
-      it: {
-        contact: 'Contatti',
-        followUs: 'Seguici',
-        poweredBy: 'Offerto da',
-        location: 'La nostra posizione',
-        rights: 'Tutti i diritti riservati.'
-      },
-      ar: {
-        contact: 'اتصل بنا',
-        followUs: 'تابعنا',
-        poweredBy: 'مدعوم من',
-        location: 'موقعنا',
-        rights: 'جميع الحقوق محفوظة.'
-      }
-    };
-
-    return translations[lang] || translations.fr;
-  };
+  const { translations: interfaceTranslations } = useInterfaceTranslations(
+    selectedLanguage,
+    ['contact', 'follow_us', 'powered_by', 'our_location', 'all_rights_reserved']
+  );
 
   const formatWhatsAppLink = (number: string) => {
     const cleanNumber = number.replace(/\D/g, '');
     return `https://wa.me/${cleanNumber}`;
   };
 
-  const { contact, followUs, poweredBy, location, rights } = getTranslations(selectedLanguage);
+  const contact = getTranslation(interfaceTranslations, 'contact', 'Contact');
+  const followUs = getTranslation(interfaceTranslations, 'follow_us', 'Suivez-nous');
+  const poweredBy = getTranslation(interfaceTranslations, 'powered_by', 'Propulsé par');
+  const location = getTranslation(interfaceTranslations, 'our_location', 'Notre emplacement');
+  const rights = getTranslation(interfaceTranslations, 'all_rights_reserved', 'Tous droits réservés.');
 
   const hasContactInfo = restaurant.telephone || restaurant.whatsapp || restaurant.address || restaurant.hours;
   const hasSocialMedia = restaurant.instagram || restaurant.facebook || restaurant.tiktok;
