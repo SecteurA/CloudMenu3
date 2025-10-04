@@ -1066,23 +1066,17 @@ const MenuPreview = () => {
                           {items.map((item) => (
                             <div key={item.id} className="px-4 py-6 border-b border-gray-100 last:border-b-0">
                               <div className="flex items-start space-x-4">
-                                {/* Image */}
-                                <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                                  {item.image_url ? (
-                                    <img 
-                                      src={item.image_url} 
+                                {/* Image - only show if exists */}
+                                {item.image_url && (
+                                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                    <img
+                                      src={item.image_url}
                                       alt={item.nom}
                                       className="w-full h-full object-cover"
                                     />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                                        <span className="text-gray-400 text-xs">📷</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                                
+                                  </div>
+                                )}
+
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between mb-2">
@@ -1164,50 +1158,70 @@ const MenuPreview = () => {
                         {items.map((item) => (
                           <div key={item.id} className="hidden lg:block">
                             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
-                              {/* Card Image */}
-                              <div className="aspect-video bg-gray-100 overflow-hidden relative">
-                                {item.image_url ? (
-                                  <img 
-                                    src={item.image_url} 
+                              {/* Card Image - only show if exists */}
+                              {item.image_url && (
+                                <div className="aspect-video bg-gray-100 overflow-hidden relative">
+                                  <img
+                                    src={item.image_url}
                                     alt={item.nom}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                      <span className="text-gray-400 text-2xl">🍽️</span>
-                                    </div>
+
+                                  {/* Dietary Icons Overlay */}
+                                  <div className="absolute top-3 left-3 flex space-x-1">
+                                    {item.vegetarien && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-green-600 p-1.5 rounded-full shadow-sm" title="Végétarien">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.vegan && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-green-700 p-1.5 rounded-full shadow-sm" title="Vegan">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.sans_gluten && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-blue-600 px-2 py-1 rounded-full text-xs font-bold shadow-sm">
+                                        SG
+                                      </span>
+                                    )}
+                                    {item.epice && (
+                                      <span className="bg-white/90 backdrop-blur-sm text-red-600 p-1.5 rounded-full shadow-sm" title="Épicé">
+                                        <Flame className="w-4 h-4" />
+                                      </span>
+                                    )}
                                   </div>
-                                )}
-                                
-                                {/* Dietary Icons Overlay */}
-                                <div className="absolute top-3 left-3 flex space-x-1">
-                                  {item.vegetarien && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-green-600 p-1.5 rounded-full shadow-sm" title="Végétarien">
-                                      <Leaf className="w-4 h-4" />
-                                    </span>
-                                  )}
-                                  {item.vegan && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-green-700 p-1.5 rounded-full shadow-sm" title="Vegan">
-                                      <Leaf className="w-4 h-4" />
-                                    </span>
-                                  )}
-                                  {item.sans_gluten && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-blue-600 px-2 py-1 rounded-full text-xs font-bold shadow-sm">
-                                      SG
-                                    </span>
-                                  )}
-                                  {item.epice && (
-                                    <span className="bg-white/90 backdrop-blur-sm text-red-600 p-1.5 rounded-full shadow-sm" title="Épicé">
-                                      <Flame className="w-4 h-4" />
-                                    </span>
-                                  )}
                                 </div>
-                              </div>
+                              )}
 
                               {/* Card Content */}
                               <div className="p-6 flex-1 flex flex-col">
-                                <h3 
+                                {/* Dietary Icons - only show when no image */}
+                                {!item.image_url && (item.vegetarien || item.vegan || item.sans_gluten || item.epice) && (
+                                  <div className="flex space-x-1 mb-3">
+                                    {item.vegetarien && (
+                                      <span className="bg-green-100 text-green-600 p-1.5 rounded-full" title="Végétarien">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.vegan && (
+                                      <span className="bg-green-200 text-green-700 p-1.5 rounded-full" title="Vegan">
+                                        <Leaf className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                    {item.sans_gluten && (
+                                      <span className="bg-blue-100 text-blue-600 px-2 py-1 rounded-full text-xs font-bold">
+                                        SG
+                                      </span>
+                                    )}
+                                    {item.epice && (
+                                      <span className="bg-red-100 text-red-600 p-1.5 rounded-full" title="Épicé">
+                                        <Flame className="w-4 h-4" />
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+
+                                <h3
                                   className="text-xl font-bold mb-2 group-hover:text-current transition-colors"
                                   style={{ color: menu.couleur_secondaire }}
                                 >
