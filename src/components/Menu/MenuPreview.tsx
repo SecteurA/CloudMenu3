@@ -286,7 +286,7 @@ const MenuPreview = () => {
     if (!menu || !languageCode || languageCode === (menu.default_language || 'fr')) {
       setCategoryTranslations({});
       setItemTranslations({});
-      setCurrentMenuTitle(menu?.menu_name || menu?.nom || '');
+      setCurrentMenuTitle(menu?.menu_name || '');
       return;
     }
 
@@ -296,7 +296,7 @@ const MenuPreview = () => {
       if (currentLang?.menu_title) {
         setCurrentMenuTitle(currentLang.menu_title);
       } else {
-        setCurrentMenuTitle(menu.menu_name || menu.nom);
+        setCurrentMenuTitle(menu.menu_name || '');
       }
 
       const categoryIds = categories.map(c => c.id);

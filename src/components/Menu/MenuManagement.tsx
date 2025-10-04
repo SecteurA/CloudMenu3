@@ -191,7 +191,7 @@ export default function MenuManagement() {
     if (!menu || !currentLanguage || currentLanguage === menu.default_language) {
       setCategoryTranslations({});
       setItemTranslations({});
-      setCurrentMenuTitle(menu?.nom || '');
+      setCurrentMenuTitle(menu?.menu_name || '');
       return;
     }
 
@@ -201,7 +201,7 @@ export default function MenuManagement() {
       if (currentLang?.menu_title) {
         setCurrentMenuTitle(currentLang.menu_title);
       } else {
-        setCurrentMenuTitle(menu.nom);
+        setCurrentMenuTitle(menu.menu_name || 'Menu');
       }
 
       const categoryIds = categories.map(c => c.id);
@@ -814,7 +814,7 @@ export default function MenuManagement() {
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentMenuTitle || menu.nom}</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{currentMenuTitle || menu.menu_name || 'Menu'}</h2>
               <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
             </div>
             <div className="flex gap-2 flex-shrink-0">
