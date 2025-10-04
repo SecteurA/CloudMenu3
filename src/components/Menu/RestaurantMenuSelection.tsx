@@ -165,14 +165,9 @@ export default function RestaurantMenuSelection() {
     return acc;
   }, []);
 
-  // Show menu if it's in the default language OR if a translation exists for the selected language
-  const groupedMenus = allGroupedMenus.filter(group => {
-    const menu = group.languages[0];
-    const defaultLanguage = menu.default_language || 'fr';
-    // Show if selected language is default OR if translation exists
-    return selectedLanguage === defaultLanguage ||
-           (menuTitleTranslations[menu.id] && menuTitleTranslations[menu.id][selectedLanguage]);
-  });
+  // Show ALL menus always - no filtering based on language
+  // Menus without translations will be shown in their default language
+  const groupedMenus = allGroupedMenus;
 
   const availableLanguages = Array.from(new Set(menus.map(m => m.language || 'fr')));
 
@@ -190,11 +185,19 @@ export default function RestaurantMenuSelection() {
   const getTranslatedMenuTitle = (menuId: string, languageCode: string, defaultTitle: string): string => {
     // If it's the default language, return the default title
     const menu = menus.find(m => m.id === menuId);
-    if (menu && (menu.default_language === languageCode || languageCode === 'fr')) {
+    if (menu && menu.default_language === languageCode) {
       return defaultTitle;
     }
-    // Otherwise, get the translated title
+    // Otherwise, get the translated title, or fallback to default
     return menuTitleTranslations[menuId]?.[languageCode] || defaultTitle;
+  };
+
+  const hasMenuTranslation = (menuId: string, languageCode: string): boolean => {
+    const menu = menus.find(m => m.id === menuId);
+    if (menu && menu.default_language === languageCode) {
+      return true; // Default language always available
+    }
+    return !!(menuTitleTranslations[menuId]?.[languageCode]);
   };
 
   if (loading) {
@@ -646,6 +649,8 @@ export default function RestaurantMenuSelection() {
                 const menu = getMenuForLanguage(group);
                 const menuSlugPart = menu.slug.split('/').pop();
                 const translatedTitle = getTranslatedMenuTitle(menu.id, selectedLanguage, group.menu_name);
+                const hasTranslation = hasMenuTranslation(menu.id, selectedLanguage);
+                const defaultLang = menu.default_language || 'fr';
 
                 return (
                   <Link
@@ -655,9 +660,16 @@ export default function RestaurantMenuSelection() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {translatedTitle}
-                        </h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {translatedTitle}
+                          </h3>
+                          {!hasTranslation && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                              {LANGUAGES[defaultLang]?.flag || '🌐'} {LANGUAGES[defaultLang]?.name || defaultLang.toUpperCase()}
+                            </span>
+                          )}
+                        </div>
                         {group.description && (
                           <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
                         )}
