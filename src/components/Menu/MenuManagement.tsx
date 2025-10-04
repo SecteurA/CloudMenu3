@@ -66,6 +66,8 @@ export default function MenuManagement() {
 
   // États pour les nouveaux éléments
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryDescription, setNewCategoryDescription] = useState('');
+  const [editingCategoryData, setEditingCategoryData] = useState<{ nom: string; description: string }>({ nom: '', description: '' });
   const [newItems, setNewItems] = useState<Record<string, Partial<MenuItemInsert>>>({});
 
   useEffect(() => {
@@ -242,6 +244,7 @@ export default function MenuManagement() {
       const categoryData: CategoryInsert = {
         menu_id: menu.id,
         nom: newCategoryName,
+        description: newCategoryDescription || '',
         ordre: categories.length
       };
 
@@ -256,10 +259,39 @@ export default function MenuManagement() {
       setCategories([...categories, data]);
       setMenuItems({ ...menuItems, [data.id]: [] });
       setNewCategoryName('');
+      setNewCategoryDescription('');
       showMessage('success', 'Catégorie ajoutée avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'ajout de la catégorie:', error);
       showMessage('error', 'Erreur lors de l\'ajout de la catégorie');
+    }
+  };
+
+  const updateCategory = async (categoryId: string) => {
+    if (!editingCategoryData.nom.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('categories')
+        .update({
+          nom: editingCategoryData.nom,
+          description: editingCategoryData.description || ''
+        })
+        .eq('id', categoryId);
+
+      if (error) throw error;
+
+      setCategories(categories.map(c =>
+        c.id === categoryId
+          ? { ...c, nom: editingCategoryData.nom, description: editingCategoryData.description || '' }
+          : c
+      ));
+      setEditingCategory(null);
+      setEditingCategoryData({ nom: '', description: '' });
+      showMessage('success', 'Catégorie modifiée avec succès');
+    } catch (error) {
+      console.error('Erreur lors de la modification de la catégorie:', error);
+      showMessage('error', 'Erreur lors de la modification de la catégorie');
     }
   };
 
@@ -737,18 +769,25 @@ export default function MenuManagement() {
       {/* Ajouter une catégorie */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
         <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Ajouter une catégorie</h3>
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col gap-3">
           <input
             type="text"
             value={newCategoryName}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="Nom de la catégorie (ex: Entrées, Plats, Desserts...)"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
-            onKeyDown={(e) => e.key === 'Enter' && addCategory()}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base"
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && addCategory()}
+          />
+          <textarea
+            value={newCategoryDescription}
+            onChange={(e) => setNewCategoryDescription(e.target.value)}
+            placeholder="Description de la catégorie (optionnelle)"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 text-sm sm:text-base resize-none"
+            rows={2}
           />
           <button
             onClick={addCategory}
-            className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center space-x-2 text-sm sm:text-base"
+            className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center justify-center space-x-2 text-sm sm:text-base self-end"
           >
             <Plus size={18} />
             <span>Ajouter</span>
@@ -771,25 +810,85 @@ export default function MenuManagement() {
             <div key={category.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
               {/* Header de catégorie */}
               <div className="p-4 sm:p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <GripVertical className="text-gray-400 hidden sm:block" size={20} />
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
-                      {currentLanguage !== menu.default_language && categoryTranslations[category.id]
-                        ? categoryTranslations[category.id].nom
-                        : category.nom}
-                    </h3>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm">
-                      {menuItems[category.id]?.length || 0} plats
-                    </span>
+                {editingCategory === category.id ? (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editingCategoryData.nom}
+                      onChange={(e) => setEditingCategoryData({ ...editingCategoryData, nom: e.target.value })}
+                      placeholder="Nom de la catégorie"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500"
+                    />
+                    <textarea
+                      value={editingCategoryData.description}
+                      onChange={(e) => setEditingCategoryData({ ...editingCategoryData, description: e.target.value })}
+                      placeholder="Description de la catégorie (optionnelle)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-orange-500 focus:border-orange-500 resize-none"
+                      rows={2}
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => updateCategory(category.id)}
+                        className="bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2"
+                      >
+                        <Save size={16} />
+                        <span>Enregistrer</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingCategory(null);
+                          setEditingCategoryData({ nom: '', description: '' });
+                        }}
+                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 flex items-center space-x-2"
+                      >
+                        <X size={16} />
+                        <span>Annuler</span>
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => deleteCategory(category.id)}
-                    className="text-red-600 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
+                ) : (
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <GripVertical className="text-gray-400 hidden sm:block mt-1" size={20} />
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                            {currentLanguage !== menu.default_language && categoryTranslations[category.id]
+                              ? categoryTranslations[category.id].nom
+                              : category.nom}
+                          </h3>
+                          <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm">
+                            {menuItems[category.id]?.length || 0} plats
+                          </span>
+                        </div>
+                        {category.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {currentLanguage !== menu.default_language && categoryTranslations[category.id]
+                              ? categoryTranslations[category.id].description
+                              : category.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setEditingCategory(category.id);
+                          setEditingCategoryData({ nom: category.nom, description: category.description || '' });
+                        }}
+                        className="text-orange-600 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-50"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => deleteCategory(category.id)}
+                        className="text-red-600 hover:text-red-700 p-2 rounded-lg hover:bg-red-50"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Liste des plats */}
