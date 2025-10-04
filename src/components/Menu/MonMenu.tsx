@@ -239,7 +239,8 @@ const MonMenu = () => {
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu
+          lien_cloudmenu: menuConfig.lien_cloudmenu,
+          currency_symbol: menuConfig.currency_symbol
         };
 
         const { error } = await supabase
@@ -281,7 +282,8 @@ const MonMenu = () => {
           couleur_texte: menuConfig.couleur_texte,
           couleur_fond: menuConfig.couleur_fond,
           afficher_powered_by: menuConfig.afficher_powered_by,
-          lien_cloudmenu: menuConfig.lien_cloudmenu
+          lien_cloudmenu: menuConfig.lien_cloudmenu,
+          currency_symbol: menuConfig.currency_symbol
         };
 
         const { data, error } = await supabase
