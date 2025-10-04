@@ -10,7 +10,8 @@ const LANGUAGES = {
   en: { name: 'English', flag: '🇬🇧' },
   es: { name: 'Español', flag: '🇪🇸' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' }
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' }
 };
 
 const getBrowserLanguage = (): string => {
@@ -150,9 +151,14 @@ export default function RestaurantMenuSelection() {
     return acc;
   }, []);
 
-  const groupedMenus = allGroupedMenus.filter(group =>
-    group.languages.some(m => m.language === selectedLanguage)
-  );
+  // Show menu if it's in the default language OR if a translation exists for the selected language
+  const groupedMenus = allGroupedMenus.filter(group => {
+    const menu = group.languages[0];
+    const defaultLanguage = menu.default_language || 'fr';
+    // Show if selected language is default OR if translation exists
+    return selectedLanguage === defaultLanguage ||
+           (menuTitleTranslations[menu.id] && menuTitleTranslations[menu.id][selectedLanguage]);
+  });
 
   const availableLanguages = Array.from(new Set(menus.map(m => m.language || 'fr')));
 

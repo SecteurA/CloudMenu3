@@ -10,7 +10,8 @@ const LANGUAGES = {
   en: { name: 'English', flag: '🇬🇧' },
   es: { name: 'Español', flag: '🇪🇸' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' }
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' }
 };
 
 export default function MenuListPage() {
