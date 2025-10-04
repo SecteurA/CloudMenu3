@@ -9,31 +9,48 @@ interface RestaurantFooterProps {
 
 export default function RestaurantFooter({ restaurant, selectedLanguage }: RestaurantFooterProps) {
   const getTranslations = (lang: string) => {
-    const translations: Record<string, { contact: string; followUs: string; poweredBy: string }> = {
+    const translations: Record<string, { contact: string; followUs: string; poweredBy: string; location: string; rights: string }> = {
       fr: {
         contact: 'Contact',
         followUs: 'Suivez-nous',
-        poweredBy: 'Propulsé par'
+        poweredBy: 'Propulsé par',
+        location: 'Notre emplacement',
+        rights: 'Tous droits réservés.'
       },
       en: {
         contact: 'Contact',
         followUs: 'Follow us',
-        poweredBy: 'Powered by'
+        poweredBy: 'Powered by',
+        location: 'Our location',
+        rights: 'All rights reserved.'
       },
       es: {
         contact: 'Contacto',
         followUs: 'Síguenos',
-        poweredBy: 'Desarrollado por'
+        poweredBy: 'Desarrollado por',
+        location: 'Nuestra ubicación',
+        rights: 'Todos los derechos reservados.'
       },
       de: {
         contact: 'Kontakt',
         followUs: 'Folge uns',
-        poweredBy: 'Unterstützt von'
+        poweredBy: 'Unterstützt von',
+        location: 'Unser Standort',
+        rights: 'Alle Rechte vorbehalten.'
       },
       it: {
         contact: 'Contatti',
         followUs: 'Seguici',
-        poweredBy: 'Offerto da'
+        poweredBy: 'Offerto da',
+        location: 'La nostra posizione',
+        rights: 'Tutti i diritti riservati.'
+      },
+      ar: {
+        contact: 'اتصل بنا',
+        followUs: 'تابعنا',
+        poweredBy: 'مدعوم من',
+        location: 'موقعنا',
+        rights: 'جميع الحقوق محفوظة.'
       }
     };
 
@@ -45,7 +62,7 @@ export default function RestaurantFooter({ restaurant, selectedLanguage }: Resta
     return `https://wa.me/${cleanNumber}`;
   };
 
-  const { contact, followUs, poweredBy } = getTranslations(selectedLanguage);
+  const { contact, followUs, poweredBy, location, rights } = getTranslations(selectedLanguage);
 
   const hasContactInfo = restaurant.telephone || restaurant.whatsapp || restaurant.address || restaurant.hours;
   const hasSocialMedia = restaurant.instagram || restaurant.facebook || restaurant.tiktok;
@@ -137,13 +154,7 @@ export default function RestaurantFooter({ restaurant, selectedLanguage }: Resta
 
           {restaurant.location && (
             <div className={`${!hasSocialMedia && hasContactInfo ? 'md:col-span-2 lg:col-span-1' : ''}`}>
-              <h3 className="text-lg font-bold text-orange-500 mb-4">
-                {selectedLanguage === 'fr' ? 'Notre emplacement' :
-                 selectedLanguage === 'en' ? 'Our location' :
-                 selectedLanguage === 'es' ? 'Nuestra ubicación' :
-                 selectedLanguage === 'de' ? 'Unser Standort' :
-                 selectedLanguage === 'it' ? 'La nostra posizione' : 'Notre emplacement'}
-              </h3>
+              <h3 className="text-lg font-bold text-orange-500 mb-4">{location}</h3>
               <div className="aspect-video w-full rounded-lg overflow-hidden">
                 <iframe
                   src={restaurant.location}
@@ -165,12 +176,7 @@ export default function RestaurantFooter({ restaurant, selectedLanguage }: Resta
         <div className="max-w-6xl mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0">
             <p className="text-sm text-gray-400">
-              © {new Date().getFullYear()} {restaurant.restaurant_name}.
-              {selectedLanguage === 'fr' ? ' Tous droits réservés.' :
-               selectedLanguage === 'en' ? ' All rights reserved.' :
-               selectedLanguage === 'es' ? ' Todos los derechos reservados.' :
-               selectedLanguage === 'de' ? ' Alle Rechte vorbehalten.' :
-               selectedLanguage === 'it' ? ' Tutti i diritti riservati.' : ' Tous droits réservés.'}
+              © {new Date().getFullYear()} {restaurant.restaurant_name}. {rights}
             </p>
             {restaurant.show_footer_branding && (
               <a

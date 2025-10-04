@@ -30,6 +30,10 @@ export default function GoogleBusinessRating({ googleBusinessUrl, selectedLangua
       it: {
         title: 'Lasciaci una recensione',
         cta: 'Scrivi una recensione su Google'
+      },
+      ar: {
+        title: 'اترك لنا تقييماً',
+        cta: 'اكتب تقييماً على جوجل'
       }
     };
 

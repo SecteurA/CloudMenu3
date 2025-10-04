@@ -290,7 +290,7 @@ export default function RestaurantMenuSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
@@ -623,7 +623,8 @@ export default function RestaurantMenuSelection() {
              selectedLanguage === 'en' ? 'Our Menus' :
              selectedLanguage === 'es' ? 'Nuestros Menús' :
              selectedLanguage === 'de' ? 'Unsere Menüs' :
-             selectedLanguage === 'it' ? 'I Nostri Menu' : 'Nos Menus'}
+             selectedLanguage === 'it' ? 'I Nostri Menu' :
+             selectedLanguage === 'ar' ? 'قوائمنا' : 'Nos Menus'}
           </h2>
           {groupedMenus.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
@@ -633,7 +634,8 @@ export default function RestaurantMenuSelection() {
                  selectedLanguage === 'en' ? 'No menus available at the moment.' :
                  selectedLanguage === 'es' ? 'No hay menús disponibles en este momento.' :
                  selectedLanguage === 'de' ? 'Derzeit sind keine Menüs verfügbar.' :
-                 selectedLanguage === 'it' ? 'Nessun menu disponibile al momento.' : 'Aucun menu disponible pour le moment.'}
+                 selectedLanguage === 'it' ? 'Nessun menu disponibile al momento.' :
+                 selectedLanguage === 'ar' ? 'لا توجد قوائم متاحة في الوقت الحالي.' : 'Aucun menu disponible pour le moment.'}
               </p>
             </div>
           ) : (
