@@ -615,7 +615,7 @@ export default function RestaurantMenuSelection() {
           </div>
         )}
 
-        <div className="px-4 mb-6">
+        <div className="px-4 py-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             {selectedLanguage === 'fr' ? 'Nos Menus' :
              selectedLanguage === 'en' ? 'Our Menus' :
