@@ -36,7 +36,19 @@ export default function GoogleBusinessRating({ googleBusinessUrl, selectedLangua
     return translations[lang] || translations.fr;
   };
 
+  const getReviewUrl = (url: string) => {
+    const reviewParam = '/review';
+    if (url.includes('g.page')) {
+      return url.endsWith('/') ? `${url}review` : `${url}/review`;
+    }
+    if (url.includes('maps')) {
+      return url.includes('?') ? `${url}&reviews=true` : `${url}?reviews=true`;
+    }
+    return url.endsWith('/') ? `${url}review` : `${url}/review`;
+  };
+
   const { title, cta } = getTranslation(selectedLanguage);
+  const reviewUrl = getReviewUrl(googleBusinessUrl);
 
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 p-5">
@@ -58,7 +70,7 @@ export default function GoogleBusinessRating({ googleBusinessUrl, selectedLangua
       <h3 className="text-lg font-semibold text-gray-900 mb-3">{title}</h3>
 
       <a
-        href={googleBusinessUrl}
+        href={reviewUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="flex items-center justify-center space-x-2 w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
