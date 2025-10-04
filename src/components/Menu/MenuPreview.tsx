@@ -106,9 +106,22 @@ const MenuPreview = () => {
 
   useEffect(() => {
     if (menu && !currentLanguage) {
-      setCurrentLanguage(menu.default_language || 'fr');
+      // Check if there's a lang parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const langParam = urlParams.get('lang');
+
+      if (langParam && availableLanguages.some(l => l.language_code === langParam)) {
+        // Use language from URL if it's available for this menu
+        setCurrentLanguage(langParam);
+      } else if (langParam === menu.default_language) {
+        // Use language from URL if it's the default language
+        setCurrentLanguage(langParam);
+      } else {
+        // Fallback to menu's default language
+        setCurrentLanguage(menu.default_language || 'fr');
+      }
     }
-  }, [menu]);
+  }, [menu, availableLanguages]);
 
   const generateQRCode = async () => {
     try {

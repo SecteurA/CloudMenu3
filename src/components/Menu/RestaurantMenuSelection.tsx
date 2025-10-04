@@ -38,7 +38,7 @@ export default function RestaurantMenuSelection() {
   const { slug } = useParams<{ slug: string }>();
   const [restaurant, setRestaurant] = useState<RestaurantProfile | null>(null);
   const [menus, setMenus] = useState<Menu[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(getBrowserLanguage());
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('fr');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [loading, setLoading] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -131,6 +131,14 @@ export default function RestaurantMenuSelection() {
             const defaultLanguages = menusData.map(m => m.default_language || 'fr');
             const allLanguages = Array.from(new Set([...defaultLanguages, ...uniqueLanguages]));
             setMenuLanguages(allLanguages);
+
+            // Auto-detect browser language and set if available
+            const browserLang = getBrowserLanguage();
+            if (allLanguages.includes(browserLang)) {
+              setSelectedLanguage(browserLang);
+            } else if (allLanguages.length > 0) {
+              setSelectedLanguage(allLanguages[0]);
+            }
 
             // Store menu title translations: { menuId: { languageCode: title } }
             const translations: Record<string, Record<string, string>> = {};
@@ -655,7 +663,7 @@ export default function RestaurantMenuSelection() {
                 return (
                   <Link
                     key={group.menu_name}
-                    to={`/m/${slug}/${menuSlugPart}`}
+                    to={`/m/${slug}/${menuSlugPart}?lang=${selectedLanguage}`}
                     className="block bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-orange-500 transition-all p-5"
                   >
                     <div className="flex items-center justify-between">
