@@ -97,13 +97,19 @@ export default function RestaurantIdentity() {
     setUploading(true);
     try {
       const oldImageUrl = formData[field];
-      const imageUrl = await uploadImage(file, user.id, field === 'banner_url' ? 'banners' : 'logos');
+      const folder = field === 'banner_url' ? 'bannieres' : 'logos';
+      const result = await uploadImage(file, folder);
+
+      if (result.error) {
+        showMessage('error', result.error);
+        return;
+      }
 
       if (oldImageUrl) {
         await deleteImage(oldImageUrl);
       }
 
-      setFormData(prev => ({ ...prev, [field]: imageUrl }));
+      setFormData(prev => ({ ...prev, [field]: result.url }));
       showMessage('success', 'Image téléchargée avec succès');
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
