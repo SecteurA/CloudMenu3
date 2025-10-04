@@ -4,6 +4,7 @@ import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDow
 import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
+import RestaurantFooter from './RestaurantFooter';
 import QRCode from 'qrcode';
 
 const LANGUAGES = {
@@ -614,15 +615,6 @@ export default function RestaurantMenuSelection() {
             </div>
             </div>
           )}
-
-          {restaurant.google_business_url && (
-            <div className="mb-6">
-              <GoogleBusinessRating
-                googleBusinessUrl={restaurant.google_business_url}
-                selectedLanguage={selectedLanguage}
-              />
-            </div>
-          )}
         </div>
 
         <div className="px-4 py-6 mb-6">
@@ -674,7 +666,18 @@ export default function RestaurantMenuSelection() {
             </div>
           )}
         </div>
+
+        {restaurant.google_business_url && (
+          <div className="px-4 mb-6">
+            <GoogleBusinessRating
+              googleBusinessUrl={restaurant.google_business_url}
+              selectedLanguage={selectedLanguage}
+            />
+          </div>
+        )}
       </div>
+
+      <RestaurantFooter restaurant={restaurant} selectedLanguage={selectedLanguage} />
 
       {/* Booking Modal */}
       {showBookingModal && (
