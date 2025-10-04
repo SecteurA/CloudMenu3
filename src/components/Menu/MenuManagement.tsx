@@ -1181,7 +1181,9 @@ export default function MenuManagement() {
                           >
                             {categories.map((cat) => (
                               <option key={cat.id} value={cat.id}>
-                                {cat.nom}
+                                {currentLanguage !== menu.default_language && categoryTranslations[cat.id]
+                                  ? categoryTranslations[cat.id].nom
+                                  : cat.nom}
                               </option>
                             ))}
                           </select>
