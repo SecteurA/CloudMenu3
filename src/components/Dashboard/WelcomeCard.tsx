@@ -251,13 +251,13 @@ const WelcomeCard = () => {
       // Get restaurant profile
       const { data: profile } = await supabase
         .from('restaurant_profiles')
-        .select('name, slug')
+        .select('restaurant_name, slug')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!profile?.slug) return;
 
-      const name = profile.name || 'Mon Restaurant';
+      const name = profile.restaurant_name || 'Mon Restaurant';
       const restaurantSlug = profile.slug;
 
       setRestaurantName(name);
