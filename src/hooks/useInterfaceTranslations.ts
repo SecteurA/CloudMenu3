@@ -19,11 +19,22 @@ export function useInterfaceTranslations(languageCode: string, keys: string[]) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchTranslations = async () => {
+      // Check cache first - if cached, use it immediately
       if (translationCache[languageCode]) {
-        setTranslations(translationCache[languageCode]);
-        setLoading(false);
+        if (isMounted) {
+          setTranslations(translationCache[languageCode]);
+          setLoading(false);
+        }
         return;
+      }
+
+      // Clear old translations and show loading state when fetching new language
+      if (isMounted) {
+        setTranslations({});
+        setLoading(true);
       }
 
       try {
@@ -35,7 +46,9 @@ export function useInterfaceTranslations(languageCode: string, keys: string[]) {
 
         if (error) {
           console.error('Error fetching interface translations:', error);
-          setLoading(false);
+          if (isMounted) {
+            setLoading(false);
+          }
           return;
         }
 
@@ -45,15 +58,24 @@ export function useInterfaceTranslations(languageCode: string, keys: string[]) {
         });
 
         translationCache[languageCode] = translationsMap;
-        setTranslations(translationsMap);
+
+        if (isMounted) {
+          setTranslations(translationsMap);
+          setLoading(false);
+        }
       } catch (error) {
         console.error('Error:', error);
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchTranslations();
+
+    return () => {
+      isMounted = false;
+    };
   }, [languageCode, keys.join(',')]);
 
   return { translations, loading };
