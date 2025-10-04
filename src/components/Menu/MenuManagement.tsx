@@ -666,67 +666,71 @@ export default function MenuManagement() {
           <ArrowLeft size={20} />
           <span>Retour à mes menus</span>
         </button>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{menu.nom}</h2>
-            <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">{menu.nom}</h2>
+              <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <Link
+                to={`/import-ai/${menuId}`}
+                className="bg-purple-600 text-white p-2.5 rounded-lg hover:bg-purple-700 transition-colors"
+                title="Import IA"
+              >
+                <Wand2 size={20} />
+              </Link>
+              <Link
+                to={`/mon-menu/${menuId}`}
+                className="bg-gray-600 text-white p-2.5 rounded-lg hover:bg-gray-700 transition-colors"
+                title="Paramètres"
+              >
+                <Settings size={20} />
+              </Link>
+              <a
+                href={`/m/${menu.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-orange-600 text-white p-2.5 rounded-lg hover:bg-orange-700 transition-colors"
+                title="Prévisualiser"
+              >
+                <Eye size={20} />
+              </a>
+            </div>
+          </div>
 
-            {/* Language Tabs */}
-            {availableLanguages.length > 0 && (
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
+          {/* Language Tabs */}
+          {availableLanguages.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setCurrentLanguage(menu.default_language || 'fr')}
+                className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  currentLanguage === menu.default_language
+                    ? 'bg-orange-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                title={AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}
+              >
+                <span className="text-base sm:text-lg">{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.flag || '🇫🇷'}</span>
+                <span className="hidden sm:inline">{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}</span>
+              </button>
+              {availableLanguages.map(lang => (
                 <button
-                  onClick={() => setCurrentLanguage(menu.default_language || 'fr')}
-                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    currentLanguage === menu.default_language
+                  key={lang.id}
+                  onClick={() => setCurrentLanguage(lang.language_code)}
+                  className={`flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    currentLanguage === lang.language_code
                       ? 'bg-orange-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
+                  title={AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}
                 >
-                  <span>{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.flag || '🇫🇷'}</span>
-                  <span>{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}</span>
+                  <span className="text-base sm:text-lg">{AVAILABLE_LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                  <span className="hidden sm:inline">{AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
                 </button>
-                {availableLanguages.map(lang => (
-                  <button
-                    key={lang.id}
-                    onClick={() => setCurrentLanguage(lang.language_code)}
-                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      currentLanguage === lang.language_code
-                        ? 'bg-orange-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span>{AVAILABLE_LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
-                    <span>{AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              to={`/import-ai/${menuId}`}
-              className="bg-purple-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-            >
-              <Wand2 size={18} />
-              <span>Import IA</span>
-            </Link>
-            <Link
-              to={`/mon-menu/${menuId}`}
-              className="bg-gray-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-            >
-              <Settings size={18} />
-              <span>Paramètres</span>
-            </Link>
-            <a
-              href={`/m/${menu.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-orange-700 flex items-center space-x-2 text-sm sm:text-base w-fit"
-            >
-              <Eye size={18} />
-              <span>Prévisualiser</span>
-            </a>
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
