@@ -355,21 +355,29 @@ export default function RestaurantMenuSelection() {
             </div>
           </div>
 
-          {/* Mobile: Language selector and Hamburger menu */}
+          {/* Mobile: Booking button, Language selector, and Hamburger menu */}
           <div className="md:hidden flex items-center space-x-2">
+            {/* Booking button - highlighted */}
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
+            >
+              <Calendar size={18} />
+              <span className="text-sm font-medium">Réserver</span>
+            </button>
+
             {availableLanguages.length > 1 && (
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
-                  className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
-                  <Globe size={16} />
-                  <span className="text-lg">{LANGUAGES[selectedLanguage]?.flag}</span>
-                  <ChevronDown size={14} />
+                  <span className="text-xl">{LANGUAGES[selectedLanguage]?.flag || '🌐'}</span>
+                  <ChevronDown size={16} />
                 </button>
 
                 {showLanguageSelector && (
-                  <div className="absolute top-full right-0 mt-2 w-40 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
                     {availableLanguages.map((lang) => (
                       <button
                         key={lang}
@@ -377,13 +385,16 @@ export default function RestaurantMenuSelection() {
                           setSelectedLanguage(lang);
                           setShowLanguageSelector(false);
                         }}
-                        className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
                           lang === selectedLanguage ? 'bg-orange-50 text-orange-700' : 'text-gray-700'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{LANGUAGES[lang]?.flag}</span>
-                          <span className="text-sm">{LANGUAGES[lang]?.name}</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[lang]?.flag}</span>
+                            <span className="text-sm">{LANGUAGES[lang]?.name}</span>
+                          </div>
+                          {selectedLanguage === lang && <Check size={16} />}
                         </div>
                       </button>
                     ))}
@@ -602,6 +613,60 @@ export default function RestaurantMenuSelection() {
         </div>
         </div>
       </div>
+
+      {/* Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-900">Réserver une table</h2>
+              <button
+                onClick={() => setShowBookingModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X size={24} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600 mb-4">
+                Pour réserver une table, veuillez nous contacter directement :
+              </p>
+              <div className="space-y-3">
+                {restaurant.telephone && (
+                  <a
+                    href={`tel:${restaurant.telephone}`}
+                    className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <Phone size={20} className="text-blue-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">Téléphone</div>
+                      <div className="text-sm text-gray-600">{restaurant.telephone}</div>
+                    </div>
+                  </a>
+                )}
+                {restaurant.whatsapp && (
+                  <a
+                    href={formatWhatsAppLink(restaurant.whatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  >
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <MessageCircle size={20} className="text-green-600" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-gray-900">WhatsApp</div>
+                      <div className="text-sm text-gray-600">{restaurant.whatsapp}</div>
+                    </div>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
