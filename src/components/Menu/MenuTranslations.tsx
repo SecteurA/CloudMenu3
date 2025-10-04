@@ -69,6 +69,7 @@ const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLang
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
+      // Translate menu content
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-menu`,
         {
@@ -88,6 +89,30 @@ const MenuTranslations: React.FC<MenuTranslationsProps> = ({ menuId, defaultLang
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Translation failed');
+      }
+
+      // Also translate interface elements
+      try {
+        const interfaceResponse = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-interface`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              languageCode,
+              languageName,
+            }),
+          }
+        );
+
+        if (!interfaceResponse.ok) {
+          console.warn('Interface translation warning:', await interfaceResponse.text());
+        }
+      } catch (interfaceError) {
+        console.warn('Interface translation failed:', interfaceError);
       }
 
       const result = await response.json();
