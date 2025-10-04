@@ -271,24 +271,73 @@ export default function MenuManagement() {
     if (!editingCategoryData.nom.trim()) return;
 
     try {
-      const { error } = await supabase
-        .from('categories')
-        .update({
-          nom: editingCategoryData.nom,
-          description: editingCategoryData.description || ''
-        })
-        .eq('id', categoryId);
+      const isTranslation = currentLanguage !== menu.default_language;
 
-      if (error) throw error;
+      if (isTranslation) {
+        // Update translation table
+        const existingTranslation = categoryTranslations[categoryId];
 
-      setCategories(categories.map(c =>
-        c.id === categoryId
-          ? { ...c, nom: editingCategoryData.nom, description: editingCategoryData.description || '' }
-          : c
-      ));
+        if (existingTranslation) {
+          // Update existing translation
+          const { error } = await supabase
+            .from('category_translations')
+            .update({
+              nom: editingCategoryData.nom,
+              description: editingCategoryData.description || ''
+            })
+            .eq('id', existingTranslation.id);
+
+          if (error) throw error;
+        } else {
+          // Create new translation
+          const { error } = await supabase
+            .from('category_translations')
+            .insert({
+              category_id: categoryId,
+              language_code: currentLanguage,
+              nom: editingCategoryData.nom,
+              description: editingCategoryData.description || ''
+            });
+
+          if (error) throw error;
+        }
+
+        // Update local state
+        setCategoryTranslations({
+          ...categoryTranslations,
+          [categoryId]: {
+            id: existingTranslation?.id || crypto.randomUUID(),
+            category_id: categoryId,
+            language_code: currentLanguage,
+            nom: editingCategoryData.nom,
+            description: editingCategoryData.description || ''
+          }
+        });
+
+        showMessage('success', 'Traduction de catégorie modifiée avec succès');
+      } else {
+        // Update default language (categories table)
+        const { error } = await supabase
+          .from('categories')
+          .update({
+            nom: editingCategoryData.nom,
+            description: editingCategoryData.description || ''
+          })
+          .eq('id', categoryId);
+
+        if (error) throw error;
+
+        setCategories(categories.map(c =>
+          c.id === categoryId
+            ? { ...c, nom: editingCategoryData.nom, description: editingCategoryData.description || '' }
+            : c
+        ));
+
+        showMessage('success', 'Catégorie modifiée avec succès');
+      }
+
       setEditingCategory(null);
       setEditingCategoryData({ nom: '', description: '' });
-      showMessage('success', 'Catégorie modifiée avec succès');
     } catch (error) {
       console.error('Erreur lors de la modification de la catégorie:', error);
       showMessage('error', 'Erreur lors de la modification de la catégorie');
@@ -572,9 +621,14 @@ export default function MenuManagement() {
 
   const startEditItem = (item: MenuItem) => {
     setEditingItem(item.id);
+
+    // If viewing a translation, load the translated text
+    const isTranslation = currentLanguage !== menu.default_language;
+    const translation = isTranslation ? itemTranslations[item.id] : null;
+
     setEditingItemData({
-      nom: item.nom,
-      description: item.description,
+      nom: translation?.nom || item.nom,
+      description: translation?.description || item.description,
       prix: item.prix,
       allergenes: item.allergenes,
       vegetarien: item.vegetarien,
@@ -596,23 +650,71 @@ export default function MenuManagement() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('menu_items')
-        .update(editingItemData)
-        .eq('id', itemId)
-        .select()
-        .single();
+      const isTranslation = currentLanguage !== menu.default_language;
 
-      if (error) throw error;
+      if (isTranslation) {
+        // Update translation table
+        const existingTranslation = itemTranslations[itemId];
 
-      setMenuItems({
-        ...menuItems,
-        [categoryId]: menuItems[categoryId].map(item => item.id === itemId ? data : item)
-      });
-      
+        if (existingTranslation) {
+          // Update existing translation
+          const { error } = await supabase
+            .from('menu_item_translations')
+            .update({
+              nom: editingItemData.nom,
+              description: editingItemData.description || ''
+            })
+            .eq('id', existingTranslation.id);
+
+          if (error) throw error;
+        } else {
+          // Create new translation
+          const { error } = await supabase
+            .from('menu_item_translations')
+            .insert({
+              menu_item_id: itemId,
+              language_code: currentLanguage,
+              nom: editingItemData.nom,
+              description: editingItemData.description || ''
+            });
+
+          if (error) throw error;
+        }
+
+        // Update local state
+        setItemTranslations({
+          ...itemTranslations,
+          [itemId]: {
+            id: existingTranslation?.id || crypto.randomUUID(),
+            menu_item_id: itemId,
+            language_code: currentLanguage,
+            nom: editingItemData.nom!,
+            description: editingItemData.description || ''
+          }
+        });
+
+        showMessage('success', 'Traduction modifiée avec succès');
+      } else {
+        // Update default language (menu_items table)
+        const { data, error } = await supabase
+          .from('menu_items')
+          .update(editingItemData)
+          .eq('id', itemId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setMenuItems({
+          ...menuItems,
+          [categoryId]: menuItems[categoryId].map(item => item.id === itemId ? data : item)
+        });
+
+        showMessage('success', 'Plat modifié avec succès');
+      }
+
       setEditingItem(null);
       setEditingItemData({});
-      showMessage('success', 'Plat modifié avec succès');
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       showMessage('error', 'Erreur lors de la modification');
@@ -874,7 +976,12 @@ export default function MenuManagement() {
                       <button
                         onClick={() => {
                           setEditingCategory(category.id);
-                          setEditingCategoryData({ nom: category.nom, description: category.description || '' });
+                          const isTranslation = currentLanguage !== menu.default_language;
+                          const translation = isTranslation ? categoryTranslations[category.id] : null;
+                          setEditingCategoryData({
+                            nom: translation?.nom || category.nom,
+                            description: translation?.description || category.description || ''
+                          });
                         }}
                         className="text-orange-600 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-50"
                       >
