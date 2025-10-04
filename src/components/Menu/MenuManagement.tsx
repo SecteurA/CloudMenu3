@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings, Globe } from 'lucide-react';
+import { Plus, Pencil, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings, Globe } from 'lucide-react';
 import { supabase, Menu, Category, MenuItem, CategoryInsert, MenuItemInsert, MenuItemUpdate, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -1215,24 +1215,13 @@ export default function MenuManagement() {
                               className="text-blue-600 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50"
                               title="Modifier"
                             >
-                              <Edit size={18} />
+                              <Pencil size={18} />
                             </button>
                         <button
                           onClick={() => toggleItemAvailability(item, category.id)}
                           className={`p-2 rounded-lg ${
-                            item.disponible 
-                              ? 'text-green-600 hover:bg-green-50' 
-                              : 'text-gray-400 hover:bg-gray-50'
-                          }`}
-                          title={item.disponible ? 'Disponible' : 'Non disponible'}
-                        >
-                          {item.disponible ? <Eye size={18} /> : <EyeOff size={18} />}
-                        </button>
-                        <button
-                          onClick={() => toggleItemAvailability(item, category.id)}
-                          className={`p-2 rounded-lg ${
-                            item.disponible 
-                              ? 'text-green-600 hover:bg-green-50' 
+                            item.disponible
+                              ? 'text-green-600 hover:bg-green-50'
                               : 'text-gray-400 hover:bg-gray-50'
                           }`}
                           title={item.disponible ? 'Disponible' : 'Non disponible'}
