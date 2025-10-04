@@ -1,10 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Save, X, GripVertical, Upload, Utensils, Eye, EyeOff, Leaf, Flame, Camera, Loader2, Check, ArrowUpDown, Wand2, ArrowLeft, Settings, Globe } from 'lucide-react';
 import { supabase, Menu, Category, MenuItem, CategoryInsert, MenuItemInsert, MenuItemUpdate, uploadImage, deleteImage } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import LoadingSpinner from '../Layout/LoadingSpinner';
+
+interface MenuLanguage {
+  id: string;
+  language_code: string;
+  is_default: boolean;
+}
+
+interface CategoryTranslation {
+  id: string;
+  category_id: string;
+  language_code: string;
+  nom: string;
+  description: string;
+}
+
+interface MenuItemTranslation {
+  id: string;
+  menu_item_id: string;
+  language_code: string;
+  nom: string;
+  description: string;
+}
+
+const AVAILABLE_LANGUAGES: Record<string, { name: string; flag: string }> = {
+  fr: { name: 'Français', flag: '🇫🇷' },
+  en: { name: 'English', flag: '🇬🇧' },
+  es: { name: 'Español', flag: '🇪🇸' },
+  de: { name: 'Deutsch', flag: '🇩🇪' },
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  pt: { name: 'Português', flag: '🇵🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' },
+  zh: { name: '中文', flag: '🇨🇳' },
+  ja: { name: '日本語', flag: '🇯🇵' },
+  ru: { name: 'Русский', flag: '🇷🇺' },
+  nl: { name: 'Nederlands', flag: '🇳🇱' },
+};
 
 export default function MenuManagement() {
   const { user } = useAuth();
@@ -18,6 +54,12 @@ export default function MenuManagement() {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Translation states
+  const [currentLanguage, setCurrentLanguage] = useState<string>('');
+  const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
+  const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
+  const [itemTranslations, setItemTranslations] = useState<Record<string, MenuItemTranslation>>({});
 
   // États pour l'édition d'éléments
   const [editingItemData, setEditingItemData] = useState<Partial<MenuItemUpdate>>({});
@@ -34,9 +76,16 @@ export default function MenuManagement() {
 
   useEffect(() => {
     if (menu) {
+      loadAvailableLanguages();
       loadMenuData();
     }
   }, [menu]);
+
+  useEffect(() => {
+    if (menu && currentLanguage && currentLanguage !== menu.default_language) {
+      loadTranslations();
+    }
+  }, [currentLanguage, menu]);
 
   const loadUserMenu = async () => {
     if (!menuId) {
@@ -109,6 +158,75 @@ export default function MenuManagement() {
       showMessage('error', 'Erreur lors du chargement des données');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAvailableLanguages = async () => {
+    if (!menu) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('menu_languages')
+        .select('*')
+        .eq('menu_id', menu.id)
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setAvailableLanguages(data || []);
+
+      // Set current language to default if not set
+      if (!currentLanguage && menu.default_language) {
+        setCurrentLanguage(menu.default_language);
+      }
+    } catch (error) {
+      console.error('Error loading languages:', error);
+    }
+  };
+
+  const loadTranslations = async () => {
+    if (!menu || !currentLanguage || currentLanguage === menu.default_language) {
+      setCategoryTranslations({});
+      setItemTranslations({});
+      return;
+    }
+
+    try {
+      const categoryIds = categories.map(c => c.id);
+
+      // Load category translations
+      const { data: catTrans } = await supabase
+        .from('category_translations')
+        .select('*')
+        .in('category_id', categoryIds)
+        .eq('language_code', currentLanguage);
+
+      const catTransMap: Record<string, CategoryTranslation> = {};
+      catTrans?.forEach(t => {
+        catTransMap[t.category_id] = t;
+      });
+      setCategoryTranslations(catTransMap);
+
+      // Load item translations
+      const allItemIds: string[] = [];
+      Object.values(menuItems).forEach(items => {
+        items.forEach(item => allItemIds.push(item.id));
+      });
+
+      if (allItemIds.length > 0) {
+        const { data: itemTrans } = await supabase
+          .from('menu_item_translations')
+          .select('*')
+          .in('menu_item_id', allItemIds)
+          .eq('language_code', currentLanguage);
+
+        const itemTransMap: Record<string, MenuItemTranslation> = {};
+        itemTrans?.forEach(t => {
+          itemTransMap[t.menu_item_id] = t;
+        });
+        setItemTranslations(itemTransMap);
+      }
+    } catch (error) {
+      console.error('Error loading translations:', error);
     }
   };
 
@@ -552,6 +670,37 @@ export default function MenuManagement() {
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">{menu.nom}</h2>
             <p className="text-sm sm:text-base text-gray-600">Organisez vos catégories et plats</p>
+
+            {/* Language Tabs */}
+            {availableLanguages.length > 0 && (
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <button
+                  onClick={() => setCurrentLanguage(menu.default_language || 'fr')}
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    currentLanguage === menu.default_language
+                      ? 'bg-orange-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span>{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.flag || '🇫🇷'}</span>
+                  <span>{AVAILABLE_LANGUAGES[menu.default_language || 'fr']?.name || 'Français'}</span>
+                </button>
+                {availableLanguages.map(lang => (
+                  <button
+                    key={lang.id}
+                    onClick={() => setCurrentLanguage(lang.language_code)}
+                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      currentLanguage === lang.language_code
+                        ? 'bg-orange-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <span>{AVAILABLE_LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                    <span>{AVAILABLE_LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
@@ -621,7 +770,11 @@ export default function MenuManagement() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <GripVertical className="text-gray-400 hidden sm:block" size={20} />
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">{category.nom}</h3>
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                      {currentLanguage !== menu.default_language && categoryTranslations[category.id]
+                        ? categoryTranslations[category.id].nom
+                        : category.nom}
+                    </h3>
                     <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs sm:text-sm">
                       {menuItems[category.id]?.length || 0} plats
                     </span>
@@ -776,13 +929,23 @@ export default function MenuManagement() {
                           /* Affichage normal */
                           <div>
                             <div className="flex items-center space-x-2 mb-1">
-                          <h4 className="font-medium text-gray-900 text-sm sm:text-base">{item.nom}</h4>
+                          <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                            {currentLanguage !== menu.default_language && itemTranslations[item.id]
+                              ? itemTranslations[item.id].nom
+                              : item.nom}
+                          </h4>
                           {item.vegetarien && <Leaf className="text-green-600" size={16} />}
                           {item.vegan && <Leaf className="text-green-700" size={16} />}
                           {item.epice && <Flame className="text-red-600" size={16} />}
                         </div>
-                        {item.description && (
-                          <p className="text-xs sm:text-sm text-gray-600 mb-1">{item.description}</p>
+                        {(currentLanguage !== menu.default_language && itemTranslations[item.id]
+                          ? itemTranslations[item.id].description
+                          : item.description) && (
+                          <p className="text-xs sm:text-sm text-gray-600 mb-1">
+                            {currentLanguage !== menu.default_language && itemTranslations[item.id]
+                              ? itemTranslations[item.id].description
+                              : item.description}
+                          </p>
                         )}
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                           <span className="font-semibold text-orange-600 text-sm sm:text-base">{item.prix.toFixed(2)} €</span>

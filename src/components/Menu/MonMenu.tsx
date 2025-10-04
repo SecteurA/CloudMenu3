@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase, Menu, MenuInsert, MenuUpdate, generateSlug, uploadImage, deleteImage } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
+import MenuTranslations from './MenuTranslations';
 
 const MonMenu = () => {
   const { menuId } = useParams<{ menuId: string }>();
@@ -460,6 +461,11 @@ const MonMenu = () => {
               </div>
             </div>
           </div>
+
+          {/* Translations - Only show for existing menus */}
+          {!isNewMenu && existingMenu && (
+            <MenuTranslations menuId={existingMenu.id} defaultLanguage={existingMenu.default_language || 'fr'} />
+          )}
 
           {/* Design */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">

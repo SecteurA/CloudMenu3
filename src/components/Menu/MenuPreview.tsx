@@ -9,8 +9,32 @@ const LANGUAGES = {
   en: { name: 'English', flag: '🇬🇧' },
   es: { name: 'Español', flag: '🇪🇸' },
   de: { name: 'Deutsch', flag: '🇩🇪' },
-  it: { name: 'Italiano', flag: '🇮🇹' }
+  it: { name: 'Italiano', flag: '🇮🇹' },
+  pt: { name: 'Português', flag: '🇵🇹' },
+  ar: { name: 'العربية', flag: '🇸🇦' },
+  zh: { name: '中文', flag: '🇨🇳' },
+  ja: { name: '日本語', flag: '🇯🇵' },
+  ru: { name: 'Русский', flag: '🇷🇺' },
+  nl: { name: 'Nederlands', flag: '🇳🇱' }
 };
+
+interface MenuLanguage {
+  id: string;
+  language_code: string;
+  is_default: boolean;
+}
+
+interface CategoryTranslation {
+  category_id: string;
+  nom: string;
+  description: string;
+}
+
+interface ItemTranslation {
+  menu_item_id: string;
+  nom: string;
+  description: string;
+}
 
 const MenuPreview = () => {
   const navigate = useNavigate();
@@ -31,6 +55,12 @@ const MenuPreview = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showMenuSelector, setShowMenuSelector] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+
+  // Translation states
+  const [currentLanguage, setCurrentLanguage] = useState<string>('fr');
+  const [availableLanguages, setAvailableLanguages] = useState<MenuLanguage[]>([]);
+  const [categoryTranslations, setCategoryTranslations] = useState<Record<string, CategoryTranslation>>({});
+  const [itemTranslations, setItemTranslations] = useState<Record<string, ItemTranslation>>({});
   
   // États pour la réservation
   const [showReservationForm, setShowReservationForm] = useState(false);
@@ -65,6 +95,18 @@ const MenuPreview = () => {
       generateQRCode();
     }
   }, [slug, menuSlug]);
+
+  useEffect(() => {
+    if (menu && currentLanguage) {
+      loadTranslations(currentLanguage);
+    }
+  }, [currentLanguage, menu, categories, menuItems]);
+
+  useEffect(() => {
+    if (menu && !currentLanguage) {
+      setCurrentLanguage(menu.default_language || 'fr');
+    }
+  }, [menu]);
 
   const generateQRCode = async () => {
     try {
@@ -225,8 +267,63 @@ const MenuPreview = () => {
         });
         setMenuItems(itemsByCategory);
       }
+
+      // Load available languages
+      const { data: languages } = await supabase
+        .from('menu_languages')
+        .select('*')
+        .eq('menu_id', menuId);
+
+      setAvailableLanguages(languages || []);
     } catch (error) {
       console.error('Erreur lors du chargement du contenu:', error);
+    }
+  };
+
+  const loadTranslations = async (languageCode: string) => {
+    if (!menu || !languageCode || languageCode === (menu.default_language || 'fr')) {
+      setCategoryTranslations({});
+      setItemTranslations({});
+      return;
+    }
+
+    try {
+      const categoryIds = categories.map(c => c.id);
+
+      // Load category translations
+      const { data: catTrans } = await supabase
+        .from('category_translations')
+        .select('*')
+        .in('category_id', categoryIds)
+        .eq('language_code', languageCode);
+
+      const catMap: Record<string, CategoryTranslation> = {};
+      catTrans?.forEach(t => {
+        catMap[t.category_id] = t;
+      });
+      setCategoryTranslations(catMap);
+
+      // Load item translations
+      const allItemIds: string[] = [];
+      Object.values(menuItems).forEach(items => {
+        items.forEach(item => allItemIds.push(item.id));
+      });
+
+      if (allItemIds.length > 0) {
+        const { data: itemTrans } = await supabase
+          .from('menu_item_translations')
+          .select('*')
+          .in('menu_item_id', allItemIds)
+          .eq('language_code', languageCode);
+
+        const itemMap: Record<string, ItemTranslation> = {};
+        itemTrans?.forEach(t => {
+          itemMap[t.menu_item_id] = t;
+        });
+        setItemTranslations(itemMap);
+      }
+    } catch (error) {
+      console.error('Error loading translations:', error);
     }
   };
 
@@ -499,8 +596,8 @@ const MenuPreview = () => {
 
           {/* Desktop: Language selector and Contact icons */}
           <div className="hidden lg:flex items-center space-x-2">
-            {/* Language Selector - show if multiple languages for this menu */}
-            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+            {/* Language Selector */}
+            {availableLanguages.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => {
@@ -509,31 +606,45 @@ const MenuPreview = () => {
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
                   <Globe size={18} />
-                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
-                  <span className="text-sm font-medium">{LANGUAGES[menu.language || 'fr']?.name}</span>
+                  <span className="text-xl">{LANGUAGES[currentLanguage]?.flag || '🌐'}</span>
+                  <span className="text-sm font-medium">{LANGUAGES[currentLanguage]?.name || currentLanguage}</span>
                   <ChevronDown size={16} />
                 </button>
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => {
-                            const newMenuSlug = m.slug.split('/').pop();
-                            navigate(`/m/${slug}/${newMenuSlug}`);
-                            setShowLanguageSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
-                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
-                            </div>
-                            {m.id === menu.id && <Check size={16} />}
+                    <button
+                      onClick={() => {
+                        setCurrentLanguage(menu.default_language || 'fr');
+                        setShowLanguageSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === menu.default_language ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{LANGUAGES[menu.default_language || 'fr']?.flag}</span>
+                          <span className="text-sm">{LANGUAGES[menu.default_language || 'fr']?.name}</span>
+                        </div>
+                        {currentLanguage === menu.default_language && <Check size={16} />}
+                      </div>
+                    </button>
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => {
+                          setCurrentLanguage(lang.language_code);
+                          setShowLanguageSelector(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === lang.language_code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                            <span className="text-sm">{LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
                           </div>
-                        </button>
-                      ))}
+                          {currentLanguage === lang.language_code && <Check size={16} />}
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -617,7 +728,7 @@ const MenuPreview = () => {
               <span className="text-sm font-medium">Réserver</span>
             </button>
 
-            {allMenus.filter(m => m.menu_name === menu.menu_name).length > 1 && (
+            {availableLanguages.length > 0 && (
               <div className="relative">
                 <button
                   onClick={() => {
@@ -625,27 +736,41 @@ const MenuPreview = () => {
                   }}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
                 >
-                  <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                  <span className="text-xl">{LANGUAGES[currentLanguage]?.flag || '🌐'}</span>
                   <ChevronDown size={16} />
                 </button>
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {allMenus.filter(m => m.menu_name === menu.menu_name).map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => {
-                            const newMenuSlug = m.slug.split('/').pop();
-                            navigate(`/m/${slug}/${newMenuSlug}`);
-                            setShowLanguageSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${m.id === menu.id ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">{LANGUAGES[m.language || 'fr']?.flag}</span>
-                              <span className="text-sm">{LANGUAGES[m.language || 'fr']?.name}</span>
-                            </div>
-                            {m.id === menu.id && <Check size={16} />}
+                    <button
+                      onClick={() => {
+                        setCurrentLanguage(menu.default_language || 'fr');
+                        setShowLanguageSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === menu.default_language ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{LANGUAGES[menu.default_language || 'fr']?.flag}</span>
+                          <span className="text-sm">{LANGUAGES[menu.default_language || 'fr']?.name}</span>
+                        </div>
+                        {currentLanguage === menu.default_language && <Check size={16} />}
+                      </div>
+                    </button>
+                    {availableLanguages.map((lang) => (
+                      <button
+                        key={lang.id}
+                        onClick={() => {
+                          setCurrentLanguage(lang.language_code);
+                          setShowLanguageSelector(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${currentLanguage === lang.language_code ? 'bg-orange-50 text-orange-700' : 'text-gray-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[lang.language_code]?.flag || '🌐'}</span>
+                            <span className="text-sm">{LANGUAGES[lang.language_code]?.name || lang.language_code}</span>
+                          </div>
+                          {currentLanguage === lang.language_code && <Check size={16} />}
                           </div>
                         </button>
                       ))}
@@ -814,7 +939,9 @@ const MenuPreview = () => {
                     borderColor: activeCategory === category.id ? menu.couleur_primaire : undefined
                   }}
                 >
-                  {category.nom}
+                  {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]
+                    ? categoryTranslations[category.id].nom
+                    : category.nom}
                 </button>
               ))}
             </div>
@@ -921,7 +1048,9 @@ const MenuPreview = () => {
                           className="text-2xl lg:text-3xl font-bold"
                           style={{ color: menu.couleur_secondaire }}
                         >
-                          {category.nom}
+                          {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]
+                    ? categoryTranslations[category.id].nom
+                    : category.nom}
                         </h2>
                         {category.description && (
                           <p className="text-base lg:text-lg text-gray-600 mt-2">{category.description}</p>
@@ -962,7 +1091,9 @@ const MenuPreview = () => {
                                         className="font-bold text-lg leading-tight"
                                         style={{ color: menu.couleur_secondaire }}
                                       >
-                                        {item.nom}
+                                        {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                          ? itemTranslations[item.id].nom
+                                          : item.nom}
                                       </h3>
                                       
                                       {/* Icônes diététiques */}
@@ -998,8 +1129,14 @@ const MenuPreview = () => {
                                     </span>
                                   </div>
 
-                                  {item.description && (
-                                    <p className="text-sm text-gray-600 mb-3 leading-relaxed">{item.description}</p>
+                                  {(currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                    ? itemTranslations[item.id].description
+                                    : item.description) && (
+                                    <p className="text-sm text-gray-600 mb-3 leading-relaxed">
+                                      {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                        ? itemTranslations[item.id].description
+                                        : item.description}
+                                    </p>
                                   )}
 
                                   {item.allergenes.length > 0 && (
@@ -1074,11 +1211,19 @@ const MenuPreview = () => {
                                   className="text-xl font-bold mb-2 group-hover:text-current transition-colors"
                                   style={{ color: menu.couleur_secondaire }}
                                 >
-                                  {item.nom}
+                                  {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                    ? itemTranslations[item.id].nom
+                                    : item.nom}
                                 </h3>
-                                
-                                {item.description && (
-                                  <p className="text-gray-600 text-sm mb-4 flex-1 line-clamp-3">{item.description}</p>
+
+                                {(currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                  ? itemTranslations[item.id].description
+                                  : item.description) && (
+                                  <p className="text-gray-600 text-sm mb-4 flex-1 line-clamp-3">
+                                    {currentLanguage !== (menu.default_language || 'fr') && itemTranslations[item.id]
+                                      ? itemTranslations[item.id].description
+                                      : item.description}
+                                  </p>
                                 )}
                                 
                                 {item.allergenes.length > 0 && (
