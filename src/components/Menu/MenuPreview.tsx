@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
-import { Loader2, AlertCircle, Leaf, Flame, Plus, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
+import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 
 const LANGUAGES = {
@@ -1134,20 +1134,10 @@ const MenuPreview = () => {
                                   )}
 
                                   {item.allergenes.length > 0 && (
-                                    <p className="text-xs text-gray-500 mb-3 bg-gray-50 px-2 py-1 rounded">
+                                    <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
                                       Allergènes: {item.allergenes.join(', ')}
                                     </p>
                                   )}
-
-                                  <div className="flex items-center justify-end">
-                                    <button 
-                                      className="px-4 py-2 rounded-full text-white text-sm font-medium flex items-center space-x-1 shadow-sm"
-                                      style={{ backgroundColor: menu.couleur_primaire }}
-                                    >
-                                      <Plus className="w-4 h-4" />
-                                      <span>Ajouter</span>
-                                    </button>
-                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -1246,23 +1236,14 @@ const MenuPreview = () => {
                                   </p>
                                 )}
 
-                                {/* Price and Add Button */}
-                                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                  <span 
+                                {/* Price */}
+                                <div className="flex items-center pt-4 border-t border-gray-100">
+                                  <span
                                     className="text-2xl font-bold"
                                     style={{ color: menu.couleur_primaire }}
                                   >
                                     {item.prix.toFixed(2)} €
                                   </span>
-                                  
-                                  <button 
-                                    className="px-6 py-2 rounded-full text-white font-medium hover:scale-105 active:scale-95 transition-all duration-200 shadow-md hover:shadow-lg"
-                                    style={{ 
-                                      backgroundColor: menu.couleur_primaire,
-                                    }}
-                                  >
-                                    Ajouter
-                                  </button>
                                 </div>
                               </div>
                             </div>
