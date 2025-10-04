@@ -590,29 +590,32 @@ export default function RestaurantMenuSelection() {
           )}
         </div>
 
-        <div className="px-4 py-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
-          {restaurant.description && (
-            <p className="text-gray-600 text-sm mb-4">{restaurant.description}</p>
-          )}
+        {(restaurant.description || restaurant.address || restaurant.hours) && (
+          <div className="px-4 py-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
+            {restaurant.description && (
+              <p className="text-gray-600 text-sm mb-4">{restaurant.description}</p>
+            )}
 
-          <div className="space-y-2">
-            {restaurant.address && (
-              <div className="flex items-start space-x-2 text-sm text-gray-600">
-                <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-                <span>{restaurant.address}</span>
-              </div>
-            )}
-            {restaurant.hours && (
-              <div className="flex items-start space-x-2 text-sm text-gray-600">
-                <Clock size={16} className="flex-shrink-0 mt-0.5" />
-                <span>{restaurant.hours}</span>
-              </div>
-            )}
+            <div className="space-y-2">
+              {restaurant.address && (
+                <div className="flex items-start space-x-2 text-sm text-gray-600">
+                  <MapPin size={16} className="flex-shrink-0 mt-0.5" />
+                  <span>{restaurant.address}</span>
+                </div>
+              )}
+              {restaurant.hours && (
+                <div className="flex items-start space-x-2 text-sm text-gray-600">
+                  <Clock size={16} className="flex-shrink-0 mt-0.5" />
+                  <span>{restaurant.hours}</span>
+                </div>
+              )}
+            </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="mb-6">
+        <div className="px-4 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
             {selectedLanguage === 'fr' ? 'Nos Menus' :
              selectedLanguage === 'en' ? 'Our Menus' :
@@ -660,7 +663,6 @@ export default function RestaurantMenuSelection() {
               })}
             </div>
           )}
-        </div>
         </div>
       </div>
 
