@@ -35,6 +35,8 @@ export default function RestaurantMenuSelection() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
+  const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
 
   useEffect(() => {
     const checkMobile = () => {
@@ -99,6 +101,33 @@ export default function RestaurantMenuSelection() {
         setMenus([]);
       } else {
         setMenus(menusData || []);
+
+        // Fetch available languages from menu_languages table
+        if (menusData && menusData.length > 0) {
+          const menuIds = menusData.map(m => m.id);
+          const { data: languagesData } = await supabase
+            .from('menu_languages')
+            .select('language_code, menu_id, menu_title')
+            .in('menu_id', menuIds);
+
+          if (languagesData) {
+            const uniqueLanguages = Array.from(new Set(languagesData.map(l => l.language_code)));
+            // Add default language from menus
+            const defaultLanguages = menusData.map(m => m.default_language || 'fr');
+            const allLanguages = Array.from(new Set([...defaultLanguages, ...uniqueLanguages]));
+            setMenuLanguages(allLanguages);
+
+            // Store menu title translations: { menuId: { languageCode: title } }
+            const translations: Record<string, Record<string, string>> = {};
+            languagesData.forEach(lang => {
+              if (!translations[lang.menu_id]) {
+                translations[lang.menu_id] = {};
+              }
+              translations[lang.menu_id][lang.language_code] = lang.menu_title || '';
+            });
+            setMenuTitleTranslations(translations);
+          }
+        }
       }
     } catch (error) {
       console.error('Erreur:', error);
@@ -134,6 +163,16 @@ export default function RestaurantMenuSelection() {
   const formatWhatsAppLink = (whatsapp: string) => {
     const cleanNumber = whatsapp.replace(/\D/g, '');
     return `https://wa.me/${cleanNumber}`;
+  };
+
+  const getTranslatedMenuTitle = (menuId: string, languageCode: string, defaultTitle: string): string => {
+    // If it's the default language, return the default title
+    const menu = menus.find(m => m.id === menuId);
+    if (menu && (menu.default_language === languageCode || languageCode === 'fr')) {
+      return defaultTitle;
+    }
+    // Otherwise, get the translated title
+    return menuTitleTranslations[menuId]?.[languageCode] || defaultTitle;
   };
 
   if (loading) {
@@ -253,7 +292,7 @@ export default function RestaurantMenuSelection() {
           {/* Desktop/Tablet: Language selector and Contact icons */}
           <div className="hidden md:flex items-center space-x-2">
             {/* Language Selector */}
-            {availableLanguages.length > 1 && (
+            {menuLanguages.length > 1 && (
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
@@ -266,7 +305,7 @@ export default function RestaurantMenuSelection() {
                 </button>
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {availableLanguages.map((lang) => (
+                    {menuLanguages.map((lang) => (
                       <button
                         key={lang}
                         onClick={() => {
@@ -366,7 +405,7 @@ export default function RestaurantMenuSelection() {
               <span className="text-sm font-medium">Réserver</span>
             </button>
 
-            {availableLanguages.length > 1 && (
+            {menuLanguages.length > 1 && (
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
@@ -378,7 +417,7 @@ export default function RestaurantMenuSelection() {
 
                 {showLanguageSelector && (
                   <div className="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50">
-                    {availableLanguages.map((lang) => (
+                    {menuLanguages.map((lang) => (
                       <button
                         key={lang}
                         onClick={() => {
@@ -582,6 +621,7 @@ export default function RestaurantMenuSelection() {
                 const menu = getMenuForLanguage(group);
                 const menuSlugPart = menu.slug.split('/').pop();
                 const hasMultipleLanguages = group.languages.length > 1;
+                const translatedTitle = getTranslatedMenuTitle(menu.id, selectedLanguage, group.menu_name);
 
                 return (
                   <Link
@@ -596,7 +636,7 @@ export default function RestaurantMenuSelection() {
                             <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
                           )}
                           <h3 className="text-lg font-semibold text-gray-900">
-                            {group.menu_name}
+                            {translatedTitle}
                           </h3>
                         </div>
                         {group.description && (
