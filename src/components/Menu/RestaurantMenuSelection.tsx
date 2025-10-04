@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X } from 'lucide-react';
 import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
+import GoogleBusinessRating from './GoogleBusinessRating';
 import QRCode from 'qrcode';
 
 const LANGUAGES = {
@@ -590,8 +591,8 @@ export default function RestaurantMenuSelection() {
           )}
         </div>
 
-        {(restaurant.description || restaurant.address || restaurant.hours) && (
-          <div className="px-4 py-6">
+        <div className="px-4 py-6">
+          {(restaurant.description || restaurant.address || restaurant.hours) && (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
             {restaurant.description && (
               <p className="text-gray-600 text-sm mb-4">{restaurant.description}</p>
@@ -612,8 +613,17 @@ export default function RestaurantMenuSelection() {
               )}
             </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {restaurant.google_business_url && (
+            <div className="mb-6">
+              <GoogleBusinessRating
+                googleBusinessUrl={restaurant.google_business_url}
+                selectedLanguage={selectedLanguage}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="px-4 py-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">

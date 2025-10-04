@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Upload, X, Check, Loader2, Building2, Phone, Instagram, Facebook, Music, MapPin, Clock } from 'lucide-react';
+import { Save, Upload, X, Check, Loader2, Building2, Phone, Instagram, Facebook, Music, MapPin, Clock, Star } from 'lucide-react';
 import { supabase, RestaurantProfile, RestaurantProfileInsert, RestaurantProfileUpdate, uploadImage, deleteImage, generateSlug } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../Layout/LoadingSpinner';
@@ -27,7 +27,8 @@ export default function RestaurantIdentity() {
     facebook: '',
     tiktok: '',
     address: '',
-    hours: ''
+    hours: '',
+    google_business_url: ''
   });
 
   useEffect(() => {
@@ -66,7 +67,8 @@ export default function RestaurantIdentity() {
           facebook: data.facebook || '',
           tiktok: data.tiktok || '',
           address: data.address || '',
-          hours: data.hours || ''
+          hours: data.hours || '',
+          google_business_url: data.google_business_url || ''
         });
       }
     } catch (error) {
@@ -148,7 +150,8 @@ export default function RestaurantIdentity() {
           facebook: formData.facebook,
           tiktok: formData.tiktok,
           address: formData.address,
-          hours: formData.hours
+          hours: formData.hours,
+          google_business_url: formData.google_business_url
         };
 
         const { error } = await supabase
@@ -174,7 +177,8 @@ export default function RestaurantIdentity() {
           facebook: formData.facebook,
           tiktok: formData.tiktok,
           address: formData.address,
-          hours: formData.hours
+          hours: formData.hours,
+          google_business_url: formData.google_business_url
         };
 
         const { data, error } = await supabase
@@ -480,6 +484,23 @@ export default function RestaurantIdentity() {
                   placeholder="https://tiktok.com/@..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Star size={16} className="inline mr-1" />
+                  Google My Business
+                </label>
+                <input
+                  type="url"
+                  value={formData.google_business_url}
+                  onChange={(e) => handleInputChange('google_business_url', e.target.value)}
+                  placeholder="https://g.page/..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Les clients pourront voir vos avis Google et laisser un avis depuis votre page
+                </p>
               </div>
             </div>
           </div>
