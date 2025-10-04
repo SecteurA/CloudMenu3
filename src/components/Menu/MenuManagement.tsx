@@ -985,7 +985,7 @@ export default function MenuManagement() {
                         }}
                         className="text-orange-600 hover:text-orange-700 p-2 rounded-lg hover:bg-orange-50"
                       >
-                        <Edit size={18} />
+                        <Pencil size={18} />
                       </button>
                       <button
                         onClick={() => deleteCategory(category.id)}
