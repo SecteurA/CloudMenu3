@@ -62,7 +62,7 @@ Deno.serve(async (req: Request) => {
     // Verify user owns this menu
     const { data: menu, error: menuError } = await supabase
       .from('menus')
-      .select('id, user_id, default_language')
+      .select('id, user_id, default_language, menu_name, nom')
       .eq('id', menuId)
       .eq('user_id', user.id)
       .maybeSingle();
@@ -86,10 +86,45 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Add language to menu_languages
+    // Translate menu title first
+    const menuTitleToTranslate = menu.menu_name || menu.nom || 'Menu';
+    const titleTranslationPrompt = `Translate this restaurant menu title from French to ${languageName}. Return ONLY the translated text, nothing else: "${menuTitleToTranslate}"`;
+
+    const titleResponse = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 100,
+        messages: [
+          {
+            role: 'user',
+            content: titleTranslationPrompt,
+          },
+        ],
+      }),
+    });
+
+    if (!titleResponse.ok) {
+      throw new Error('Menu title translation failed');
+    }
+
+    const titleData = await titleResponse.json();
+    const translatedMenuTitle = titleData.content[0].text.trim().replace(/['"]/g, '');
+
+    // Add language to menu_languages with translated menu title
     const { error: langInsertError } = await supabase
       .from('menu_languages')
-      .insert([{ menu_id: menuId, language_code: targetLanguage, is_default: false }]);
+      .insert([{
+        menu_id: menuId,
+        language_code: targetLanguage,
+        is_default: false,
+        menu_title: translatedMenuTitle
+      }]);
 
     if (langInsertError) throw langInsertError;
 
@@ -201,6 +236,7 @@ ${JSON.stringify(itemsToTranslate, null, 2)}`;
       JSON.stringify({
         success: true,
         message: `Translated to ${languageName}`,
+        menuTitle: translatedMenuTitle,
         categoriesCount: categoryTranslations.length,
         itemsCount: itemTranslations.length,
       }),
