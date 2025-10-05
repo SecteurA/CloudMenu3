@@ -69,6 +69,9 @@ const MenuPreview = () => {
   // États pour la réservation
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [reservationLoading, setReservationLoading] = useState(false);
+
+  // Lightbox state
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
   const [reservationMessage, setReservationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [reservationData, setReservationData] = useState({
     customer_name: '',
@@ -1128,7 +1131,10 @@ const MenuPreview = () => {
                               <div className={`flex items-start ${isRTL() ? 'space-x-reverse' : ''} space-x-4`}>
                                 {/* Image - only show if exists */}
                                 {item.image_url && (
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                  <div
+                                    className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setLightboxImage({ url: item.image_url!, name: item.nom })}
+                                  >
                                     <img
                                       src={item.image_url}
                                       alt={item.nom}
@@ -1210,7 +1216,10 @@ const MenuPreview = () => {
                             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
                               {/* Card Image - only show if exists */}
                               {item.image_url && (
-                                <div className="aspect-video bg-gray-100 overflow-hidden relative">
+                                <div
+                                  className="aspect-video bg-gray-100 overflow-hidden relative cursor-pointer"
+                                  onClick={() => setLightboxImage({ url: item.image_url!, name: item.nom })}
+                                >
                                   <img
                                     src={item.image_url}
                                     alt={item.nom}
@@ -1476,6 +1485,30 @@ const MenuPreview = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+            onClick={() => setLightboxImage(null)}
+          >
+            <X size={32} />
+          </button>
+          <div className="max-w-7xl max-h-full w-full h-full flex flex-col items-center justify-center">
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.name}
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-white text-lg font-medium mt-4">{lightboxImage.name}</p>
           </div>
         </div>
       )}
