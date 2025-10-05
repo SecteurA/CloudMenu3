@@ -141,6 +141,7 @@ export default function RestaurantMenuSelection() {
         .eq('user_id', restaurantData.user_id)
         .eq('actif', true)
         .eq('status', 'published')
+        .order('ordre', { ascending: true })
         .order('created_at', { ascending: true });
 
       if (menusError) {
