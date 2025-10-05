@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X, Loader2, Users } from 'lucide-react';
-import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
+import { supabase, RestaurantProfile, Menu, trackMenuVisit } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
 import RestaurantFooter from './RestaurantFooter';
@@ -48,6 +48,7 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+  const [visitTracked, setVisitTracked] = useState(false);
 
   // Reservation states
   const [reservationLoading, setReservationLoading] = useState(false);
@@ -96,6 +97,26 @@ export default function RestaurantMenuSelection() {
       generateQRCode();
     }
   }, [slug]);
+
+  // Track visit when menus load
+  useEffect(() => {
+    if (menus.length > 0 && !visitTracked) {
+      // Check visit type based on ref parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      let visitType: 'qr_scan' | 'direct_link' | 'gmb' = 'direct_link';
+
+      if (ref === 'qr') {
+        visitType = 'qr_scan';
+      } else if (ref === 'gmb') {
+        visitType = 'gmb';
+      }
+
+      // Track visit to the first menu (as proxy for restaurant landing page)
+      trackMenuVisit(menus[0].id, visitType);
+      setVisitTracked(true);
+    }
+  }, [menus, visitTracked]);
 
   const generateQRCode = async () => {
     try {
