@@ -84,9 +84,17 @@ const MenuPreview = () => {
   const navRef = useRef<HTMLDivElement>(null);
   const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
-  const { interfaceTranslations } = useInterfaceTranslations(
-    restaurantProfile?.user_id || '',
-    currentLanguage
+  const { translations: interfaceTranslations } = useInterfaceTranslations(
+    currentLanguage,
+    [
+      'reserve',
+      'book_table',
+      'contact',
+      'follow_us',
+      'powered_by',
+      'our_location',
+      'all_rights_reserved'
+    ]
   );
 
   useEffect(() => {
