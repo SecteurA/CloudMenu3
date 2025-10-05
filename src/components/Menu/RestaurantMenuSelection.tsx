@@ -48,9 +48,23 @@ export default function RestaurantMenuSelection() {
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
 
+  // Fetch ALL interface translations at once to avoid race conditions between child components
   const { translations: interfaceTranslations, loading: translationsLoading } = useInterfaceTranslations(
     selectedLanguage,
-    ['our_menus', 'no_menus_available', 'reserve', 'book_table', 'contact_us_directly']
+    [
+      'our_menus',
+      'no_menus_available',
+      'reserve',
+      'book_table',
+      'contact_us_directly',
+      'leave_review',
+      'write_review_google',
+      'contact',
+      'follow_us',
+      'powered_by',
+      'our_location',
+      'all_rights_reserved'
+    ]
   );
 
   useEffect(() => {
@@ -696,12 +710,17 @@ export default function RestaurantMenuSelection() {
             <GoogleBusinessRating
               googleBusinessUrl={restaurant.google_business_url}
               selectedLanguage={selectedLanguage}
+              translations={interfaceTranslations}
             />
           </div>
         )}
       </div>
 
-      <RestaurantFooter restaurant={restaurant} selectedLanguage={selectedLanguage} />
+      <RestaurantFooter
+        restaurant={restaurant}
+        selectedLanguage={selectedLanguage}
+        translations={interfaceTranslations}
+      />
 
       {/* Booking Modal */}
       {showBookingModal && (

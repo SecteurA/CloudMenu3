@@ -1,29 +1,25 @@
 import React from 'react';
 import { Phone, MapPin, Clock, Instagram, Facebook, Music, MessageCircle } from 'lucide-react';
 import { RestaurantProfile } from '../../lib/supabase';
-import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
+import { getTranslation } from '../../hooks/useInterfaceTranslations';
 
 interface RestaurantFooterProps {
   restaurant: RestaurantProfile;
   selectedLanguage: string;
+  translations: Record<string, string>;
 }
 
-export default function RestaurantFooter({ restaurant, selectedLanguage }: RestaurantFooterProps) {
-  const { translations: interfaceTranslations } = useInterfaceTranslations(
-    selectedLanguage,
-    ['contact', 'follow_us', 'powered_by', 'our_location', 'all_rights_reserved']
-  );
-
+export default function RestaurantFooter({ restaurant, selectedLanguage, translations }: RestaurantFooterProps) {
   const formatWhatsAppLink = (number: string) => {
     const cleanNumber = number.replace(/\D/g, '');
     return `https://wa.me/${cleanNumber}`;
   };
 
-  const contact = getTranslation(interfaceTranslations, 'contact', 'Contact');
-  const followUs = getTranslation(interfaceTranslations, 'follow_us', 'Suivez-nous');
-  const poweredBy = getTranslation(interfaceTranslations, 'powered_by', 'Propulsé par');
-  const location = getTranslation(interfaceTranslations, 'our_location', 'Notre emplacement');
-  const rights = getTranslation(interfaceTranslations, 'all_rights_reserved', 'Tous droits réservés.');
+  const contact = getTranslation(translations, 'contact', 'Contact');
+  const followUs = getTranslation(translations, 'follow_us', 'Suivez-nous');
+  const poweredBy = getTranslation(translations, 'powered_by', 'Propulsé par');
+  const location = getTranslation(translations, 'our_location', 'Notre emplacement');
+  const rights = getTranslation(translations, 'all_rights_reserved', 'Tous droits réservés.');
 
   const hasContactInfo = restaurant.telephone || restaurant.whatsapp || restaurant.address || restaurant.hours;
   const hasSocialMedia = restaurant.instagram || restaurant.facebook || restaurant.tiktok;
