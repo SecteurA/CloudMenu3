@@ -69,6 +69,9 @@ const MenuPreview = () => {
   // États pour la réservation
   const [showReservationForm, setShowReservationForm] = useState(false);
   const [reservationLoading, setReservationLoading] = useState(false);
+
+  // Lightbox state
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
   const [reservationMessage, setReservationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [reservationData, setReservationData] = useState({
     customer_name: '',
@@ -93,7 +96,8 @@ const MenuPreview = () => {
       'follow_us',
       'powered_by',
       'our_location',
-      'all_rights_reserved'
+      'all_rights_reserved',
+      'allergens'
     ]
   );
 
@@ -220,7 +224,9 @@ const MenuPreview = () => {
         .select('*')
         .eq('user_id', restaurantData.user_id)
         .eq('actif', true)
-        .eq('status', 'published');
+        .eq('status', 'published')
+        .order('ordre', { ascending: true })
+        .order('created_at', { ascending: true });
 
       if (menusError) {
         setError('Erreur lors du chargement des menus');
@@ -1110,8 +1116,14 @@ const MenuPreview = () => {
                     ? categoryTranslations[category.id].nom
                     : category.nom}
                         </h2>
-                        {category.description && (
-                          <p className="text-base lg:text-lg text-gray-600 mt-2">{category.description}</p>
+                        {(currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]?.description
+                          ? categoryTranslations[category.id].description
+                          : category.description) && (
+                          <p className="text-base lg:text-lg text-gray-600 mt-2">
+                            {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]?.description
+                              ? categoryTranslations[category.id].description
+                              : category.description}
+                          </p>
                         )}
                         <div className="hidden lg:block w-16 h-1 bg-current mx-auto mt-4 rounded-full" 
                              style={{ backgroundColor: menu.couleur_primaire }} />
@@ -1126,7 +1138,10 @@ const MenuPreview = () => {
                               <div className={`flex items-start ${isRTL() ? 'space-x-reverse' : ''} space-x-4`}>
                                 {/* Image - only show if exists */}
                                 {item.image_url && (
-                                  <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                                  <div
+                                    className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => setLightboxImage({ url: item.image_url!, name: item.nom })}
+                                  >
                                     <img
                                       src={item.image_url}
                                       alt={item.nom}
@@ -1193,7 +1208,7 @@ const MenuPreview = () => {
 
                                   {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                     <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-                                      Allergènes: {item.allergenes.join(', ')}
+                                      {getTranslation(interfaceTranslations, 'allergens', 'Allergènes')}: {item.allergenes.join(', ')}
                                     </p>
                                   )}
                                 </div>
@@ -1208,7 +1223,10 @@ const MenuPreview = () => {
                             <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
                               {/* Card Image - only show if exists */}
                               {item.image_url && (
-                                <div className="aspect-video bg-gray-100 overflow-hidden relative">
+                                <div
+                                  className="aspect-video bg-gray-100 overflow-hidden relative cursor-pointer"
+                                  onClick={() => setLightboxImage({ url: item.image_url!, name: item.nom })}
+                                >
                                   <img
                                     src={item.image_url}
                                     alt={item.nom}
@@ -1290,7 +1308,7 @@ const MenuPreview = () => {
                                 
                                 {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                   <p className="text-xs text-gray-500 mb-4 bg-gray-50 px-3 py-1 rounded-lg">
-                                    Allergènes: {item.allergenes.join(', ')}
+                                    {getTranslation(interfaceTranslations, 'allergens', 'Allergènes')}: {item.allergenes.join(', ')}
                                   </p>
                                 )}
 
@@ -1474,6 +1492,30 @@ const MenuPreview = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
+            onClick={() => setLightboxImage(null)}
+          >
+            <X size={32} />
+          </button>
+          <div className="max-w-7xl max-h-full w-full h-full flex flex-col items-center justify-center">
+            <img
+              src={lightboxImage.url}
+              alt={lightboxImage.name}
+              className="max-w-full max-h-[90vh] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-white text-lg font-medium mt-4">{lightboxImage.name}</p>
           </div>
         </div>
       )}
