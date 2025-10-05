@@ -833,7 +833,8 @@ const MenuPreview = () => {
                   e.stopPropagation();
                   setIsMenuOpen(!isMenuOpen);
                 }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors border-0 outline-none focus:outline-none"
+                style={{ border: 'none', outline: 'none' }}
               >
                 <MenuIcon size={24} className="text-black" />
               </button>
@@ -856,11 +857,11 @@ const MenuPreview = () => {
                       }}
                       className="w-full flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
                     >
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
-                          <MenuIcon size={18} className="text-orange-600" />
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MenuIcon size={18} className="text-green-600" />
                         </div>
-                        <div>
+                        <div className="flex-1 min-w-0 text-left">
                           <div className="font-medium text-gray-900">
                             {menuItem.menu_name}
                           </div>
@@ -869,7 +870,7 @@ const MenuPreview = () => {
                           )}
                         </div>
                       </div>
-                      <ChevronRight size={18} className="text-gray-400" />
+                      <ChevronRight size={18} className="text-gray-400 flex-shrink-0 ml-2" />
                     </button>
                   );
                 })}
