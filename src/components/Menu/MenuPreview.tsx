@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
 import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
+import RestaurantFooter from './RestaurantFooter';
+import { useInterfaceTranslations } from '../../hooks/useInterfaceTranslations';
 
 const LANGUAGES = {
   fr: { name: 'Français', flag: '🇫🇷', rtl: false },
@@ -81,6 +83,11 @@ const MenuPreview = () => {
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const navRef = useRef<HTMLDivElement>(null);
   const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const { interfaceTranslations } = useInterfaceTranslations(
+    restaurantProfile?.user_id || '',
+    currentLanguage
+  );
 
   useEffect(() => {
     const checkMobile = () => {
@@ -1303,25 +1310,12 @@ const MenuPreview = () => {
         </div>
 
         {/* Footer */}
-        {(menu.afficher_powered_by || menu.lien_cloudmenu) && (
-          <footer className="text-center py-8 border-t border-gray-200 bg-gray-50 mx-4 lg:mx-0 lg:rounded-t-2xl">
-            {menu.afficher_powered_by && (
-              <p className="text-base text-gray-500 mb-3">
-                Propulsé par CloudMenu
-              </p>
-            )}
-            {menu.lien_cloudmenu && (
-              <a 
-                href="https://cloudmenu.com" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-base hover:underline"
-                style={{ color: menu.couleur_primaire }}
-              >
-                Créer mon menu gratuitement avec CloudMenu
-              </a>
-            )}
-          </footer>
+        {restaurantProfile && (
+          <RestaurantFooter
+            restaurant={restaurantProfile}
+            selectedLanguage={currentLanguage}
+            translations={interfaceTranslations}
+          />
         )}
       </div>
 
