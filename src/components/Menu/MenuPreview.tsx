@@ -96,7 +96,8 @@ const MenuPreview = () => {
       'follow_us',
       'powered_by',
       'our_location',
-      'all_rights_reserved'
+      'all_rights_reserved',
+      'allergens'
     ]
   );
 
@@ -1207,7 +1208,7 @@ const MenuPreview = () => {
 
                                   {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                     <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
-                                      Allergènes: {item.allergenes.join(', ')}
+                                      {getTranslation(interfaceTranslations, 'allergens', 'Allergènes')}: {item.allergenes.join(', ')}
                                     </p>
                                   )}
                                 </div>
@@ -1307,7 +1308,7 @@ const MenuPreview = () => {
                                 
                                 {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                   <p className="text-xs text-gray-500 mb-4 bg-gray-50 px-3 py-1 rounded-lg">
-                                    Allergènes: {item.allergenes.join(', ')}
+                                    {getTranslation(interfaceTranslations, 'allergens', 'Allergènes')}: {item.allergenes.join(', ')}
                                   </p>
                                 )}
 
