@@ -451,7 +451,7 @@ export default function RestaurantMenuSelection() {
         <div className="h-16 flex items-center justify-between px-4">
           {/* Restaurant name on the left */}
           <h1 className="text-xl font-bold truncate" style={{ color: '#000000' }}>
-            {restaurant.nom_restaurant}
+            {restaurant.restaurant_name}
           </h1>
 
           {/* Desktop/Tablet: Language selector and Contact icons */}

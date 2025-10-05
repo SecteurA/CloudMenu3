@@ -648,7 +648,7 @@ const MenuPreview = () => {
             style={{ color: '#000000' }}
             onClick={() => navigate(`/m/${slug}`)}
           >
-            {restaurantProfile?.nom_restaurant || menu.nom}
+            {restaurantProfile?.restaurant_name || menu.nom}
           </h1>
 
           {/* Desktop: Language selector and Contact icons */}
