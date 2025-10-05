@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X, Loader2, Users } from 'lucide-react';
-import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
+import { supabase, RestaurantProfile, Menu, trackMenuVisit } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
 import RestaurantFooter from './RestaurantFooter';
@@ -48,6 +48,7 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+  const [visitTracked, setVisitTracked] = useState(false);
 
   // Reservation states
   const [reservationLoading, setReservationLoading] = useState(false);
@@ -96,6 +97,26 @@ export default function RestaurantMenuSelection() {
       generateQRCode();
     }
   }, [slug]);
+
+  // Track visit when menus load
+  useEffect(() => {
+    if (menus.length > 0 && !visitTracked) {
+      // Check visit type based on ref parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const ref = urlParams.get('ref');
+      let visitType: 'qr_scan' | 'direct_link' | 'gmb' = 'direct_link';
+
+      if (ref === 'qr') {
+        visitType = 'qr_scan';
+      } else if (ref === 'gmb') {
+        visitType = 'gmb';
+      }
+
+      // Track visit to the first menu (as proxy for restaurant landing page)
+      trackMenuVisit(menus[0].id, visitType);
+      setVisitTracked(true);
+    }
+  }, [menus, visitTracked]);
 
   const generateQRCode = async () => {
     try {
@@ -784,10 +805,22 @@ export default function RestaurantMenuSelection() {
                   <Link
                     key={group.menu_name}
                     to={`/m/${slug}/${menuSlugPart}?lang=${selectedLanguage}`}
-                    className="block bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-orange-500 transition-all p-5"
+                    className="block bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-orange-500 transition-all overflow-hidden"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-stretch">
+                      {/* Menu Banner Image */}
+                      {menu.banniere_url && (
+                        <div className="w-40 flex-shrink-0">
+                          <img
+                            src={menu.banniere_url}
+                            alt={translatedTitle}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <div className="flex-1 p-5">
                         <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-lg font-semibold text-gray-900">
                             {translatedTitle}
@@ -802,7 +835,6 @@ export default function RestaurantMenuSelection() {
                           <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
                         )}
                       </div>
-                      <ChevronRight className="flex-shrink-0 ml-3 text-gray-400" size={20} />
                     </div>
                   </Link>
                 );
