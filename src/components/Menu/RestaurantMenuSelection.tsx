@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X } from 'lucide-react';
+import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X, Loader2, Users } from 'lucide-react';
 import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
@@ -48,6 +48,19 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+
+  // Reservation states
+  const [reservationLoading, setReservationLoading] = useState(false);
+  const [reservationMessage, setReservationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [reservationData, setReservationData] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    party_size: 2,
+    reservation_date: '',
+    reservation_time: '',
+    special_requests: ''
+  });
 
   // Fetch ALL interface translations at once to avoid race conditions between child components
   const { translations: interfaceTranslations, loading: translationsLoading } = useInterfaceTranslations(
@@ -231,6 +244,78 @@ export default function RestaurantMenuSelection() {
   const formatWhatsAppLink = (whatsapp: string) => {
     const cleanNumber = whatsapp.replace(/\D/g, '');
     return `https://wa.me/${cleanNumber}`;
+  };
+
+  const showReservationMessage = (type: 'success' | 'error', text: string) => {
+    setReservationMessage({ type, text });
+    setTimeout(() => setReservationMessage(null), 5000);
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const handleReservationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!reservationData.customer_name.trim() || !reservationData.customer_phone.trim() ||
+        !reservationData.reservation_date || !reservationData.reservation_time) {
+      showReservationMessage('error', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setReservationLoading(true);
+
+    try {
+      // Get first menu to use as menu_id for the reservation
+      const firstMenu = menus.length > 0 ? menus[0] : null;
+
+      if (!firstMenu) {
+        showReservationMessage('error', 'Aucun menu disponible pour la réservation');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('reservations')
+        .insert([{
+          menu_id: firstMenu.id,
+          customer_name: reservationData.customer_name,
+          customer_email: null,
+          customer_phone: reservationData.customer_phone,
+          party_size: reservationData.party_size,
+          reservation_date: reservationData.reservation_date,
+          reservation_time: reservationData.reservation_time,
+          special_requests: reservationData.special_requests || null,
+          status: 'pending'
+        }]);
+
+      if (error) throw error;
+
+      showReservationMessage('success', 'Votre réservation a été envoyée avec succès ! Le restaurant vous contactera pour confirmer.');
+      setReservationData({
+        customer_name: '',
+        customer_email: '',
+        customer_phone: '',
+        party_size: 2,
+        reservation_date: '',
+        reservation_time: '',
+        special_requests: ''
+      });
+
+      // Close form after 3 seconds
+      setTimeout(() => {
+        setShowBookingModal(false);
+        setReservationMessage(null);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Erreur lors de la réservation:', error);
+      showReservationMessage('error', 'Erreur lors de l\'envoi de la réservation. Veuillez réessayer.');
+    } finally {
+      setReservationLoading(false);
+    }
   };
 
   const getTranslatedMenuTitle = (menuId: string, languageCode: string, defaultTitle: string): string => {
@@ -750,54 +835,157 @@ export default function RestaurantMenuSelection() {
 
       {/* Booking Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">{getTranslation(interfaceTranslations, 'book_table', 'Réserver une table')}</h2>
-              <button
-                onClick={() => setShowBookingModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={24} className="text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
-                {getTranslation(interfaceTranslations, 'contact_us_directly', 'Pour réserver une table, veuillez nous contacter directement :')}
-              </p>
-              <div className="space-y-3">
-                {restaurant.telephone && (
-                  <a
-                    href={`tel:${restaurant.telephone}`}
-                    className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Phone size={20} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{restaurant.telephone}</div>
-                    </div>
-                  </a>
-                )}
-                {restaurant.whatsapp && (
-                  <a
-                    href={formatWhatsAppLink(restaurant.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <MessageCircle size={20} className="text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{restaurant.whatsapp}</div>
-                    </div>
-                  </a>
-                )}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">{getTranslation(interfaceTranslations, 'book_table', 'Réserver une table')}</h2>
+                <button
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    setReservationMessage(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
+
+            {/* Message */}
+            {reservationMessage && (
+              <div className={`mx-6 mt-4 p-4 rounded-lg flex items-start space-x-2 ${
+                reservationMessage.type === 'success'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {reservationMessage.type === 'success' ? (
+                  <Check className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <X className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                )}
+                <span className="text-sm">{reservationMessage.text}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleReservationSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom complet *
+                </label>
+                <input
+                  type="text"
+                  value={reservationData.customer_name}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="Votre nom"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Téléphone *
+                </label>
+                <input
+                  type="tel"
+                  value={reservationData.customer_phone}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="06 12 34 56 78"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={reservationData.reservation_date}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  min={getTomorrowDate()}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Heure *
+                </label>
+                <input
+                  type="time"
+                  value={reservationData.reservation_time}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_time: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre de personnes *
+                </label>
+                <select
+                  value={reservationData.party_size}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, party_size: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  required
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(num => (
+                    <option key={num} value={num}>
+                      {num} personne{num > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Demandes spéciales (optionnel)
+                </label>
+                <textarea
+                  value={reservationData.special_requests}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, special_requests: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white resize-none"
+                  rows={3}
+                  placeholder="Allergies, préférences de table, occasion spéciale..."
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    setReservationMessage(null);
+                  }}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={reservationLoading}
+                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  {reservationLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Calendar className="w-5 h-5" />
+                      <span>Réserver</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
