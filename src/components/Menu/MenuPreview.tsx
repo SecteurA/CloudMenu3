@@ -427,18 +427,30 @@ const MenuPreview = () => {
   }, [categories, activeCategory]);
 
   // Fermer le menu en cliquant à l'extérieur
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
+      const target = event.target as HTMLElement;
+
+      // Close hamburger menu if clicking outside
+      if (isMenuOpen && !target.closest('.hamburger-menu-container')) {
         setIsMenuOpen(false);
+      }
+
+      // Close language selector if clicking outside
+      if (showLanguageSelector && !target.closest('.language-selector-container')) {
+        setShowLanguageSelector(false);
+      }
+
+      // Close menu selector if clicking outside
+      if (showMenuSelector && !target.closest('.menu-selector-container')) {
+        setShowMenuSelector(false);
       }
     };
 
-    if (isMenuOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [isMenuOpen]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen, showLanguageSelector, showMenuSelector]);
 
   const formatWhatsAppLink = (phone: string) => {
     // Nettoyer le numéro et le formater pour WhatsApp
@@ -628,7 +640,7 @@ const MenuPreview = () => {
           <div className={`hidden lg:flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {/* Language Selector */}
             {availableLanguages.length > 0 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => {
                     setShowLanguageSelector(!showLanguageSelector);
@@ -759,7 +771,7 @@ const MenuPreview = () => {
             </button>
 
             {availableLanguages.length > 0 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => {
                     setShowLanguageSelector(!showLanguageSelector);
@@ -811,21 +823,23 @@ const MenuPreview = () => {
 
             {/* Mobile/Tablet: Hamburger menu button - only show if there are contact items */}
             {(restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsMenuOpen(!isMenuOpen);
-                }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <MenuIcon size={24} className="text-black" />
-              </button>
+              <div className="hamburger-menu-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <MenuIcon size={24} className="text-black" />
+                </button>
+              </div>
             )}
           </div>
-          
+
           {/* Menu déroulant */}
           {isMenuOpen && (restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
-            <div className="absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
+            <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
               <div className="px-4 py-3 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
               </div>

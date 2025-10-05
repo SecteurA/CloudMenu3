@@ -182,6 +182,26 @@ export default function RestaurantMenuSelection() {
     }
   }, [restaurant]);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Close language selector if clicking outside
+      if (showLanguageSelector && !target.closest('.language-selector-container')) {
+        setShowLanguageSelector(false);
+      }
+
+      // Close hamburger menu if clicking outside
+      if (isMenuOpen && !target.closest('.hamburger-menu-container')) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLanguageSelector, isMenuOpen]);
+
   const allGroupedMenus: MenuGroup[] = menus.reduce((acc: MenuGroup[], menu) => {
     const existingGroup = acc.find(g => g.menu_name === menu.menu_name);
     if (existingGroup) {
@@ -339,12 +359,21 @@ export default function RestaurantMenuSelection() {
     <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="h-16 flex items-center justify-end px-4">
+        <div className="h-16 flex items-center justify-between px-4">
+          {/* Desktop: Booking button on the left */}
+          <button
+            onClick={() => setShowBookingModal(true)}
+            className="hidden md:flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
+          >
+            <Calendar size={18} />
+            <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
+          </button>
+
           {/* Desktop/Tablet: Language selector and Contact icons */}
           <div className="hidden md:flex items-center space-x-2">
             {/* Language Selector */}
             {menuLanguages.length > 1 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
@@ -457,7 +486,7 @@ export default function RestaurantMenuSelection() {
             </button>
 
             {menuLanguages.length > 1 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
@@ -495,21 +524,23 @@ export default function RestaurantMenuSelection() {
 
             {/* Hamburger menu button */}
             {(restaurant.telephone || restaurant.whatsapp || restaurant.instagram || restaurant.facebook || restaurant.tiktok) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsMenuOpen(!isMenuOpen);
-                }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <MenuIcon size={24} className="text-black" />
-              </button>
+              <div className="hamburger-menu-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <MenuIcon size={24} className="text-black" />
+                </button>
+              </div>
             )}
           </div>
 
           {/* Hamburger dropdown menu */}
           {isMenuOpen && (restaurant.telephone || restaurant.whatsapp || restaurant.instagram || restaurant.facebook || restaurant.tiktok) && (
-            <div className="absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
+            <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
               <div className="px-4 py-3 border-b border-gray-100">
                 <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
               </div>
