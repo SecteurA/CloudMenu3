@@ -27,7 +27,7 @@ const LoginPage = () => {
 
   const handleClassicLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.trim() || !password.trim()) {
       showMessage('error', 'Veuillez remplir tous les champs');
       return;
@@ -37,10 +37,31 @@ const LoginPage = () => {
     setMessage(null);
 
     try {
+      // Check if user exists and was created with OAuth
+      const checkResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-user-provider`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const checkData = await checkResponse.json();
+
+      if (checkData.exists && checkData.isOAuth) {
+        showMessage('error', `Ce compte a été créé avec ${checkData.provider === 'google' ? 'Google' : checkData.provider}. Veuillez vous connecter avec ${checkData.provider === 'google' ? 'Google' : 'votre fournisseur OAuth'}.`);
+        setLoginLoading(false);
+        return;
+      }
+
       const { error } = await signIn(email, password);
       if (error) {
-        showMessage('error', error.message === 'Invalid login credentials' 
-          ? 'Email ou mot de passe incorrect' 
+        showMessage('error', error.message === 'Invalid login credentials'
+          ? 'Email ou mot de passe incorrect'
           : error.message);
       }
     } catch (error) {
@@ -142,9 +163,34 @@ const LoginPage = () => {
     setMessage(null);
 
     try {
+      // Check if email already exists with OAuth provider
+      const checkResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-user-provider`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
+
+      const checkData = await checkResponse.json();
+
+      if (checkData.exists && checkData.isOAuth) {
+        showMessage('error', `Un compte existe déjà avec cet email via ${checkData.provider === 'google' ? 'Google' : checkData.provider}. Veuillez vous connecter avec ${checkData.provider === 'google' ? 'Google' : 'votre fournisseur OAuth'}.`);
+        setSignupLoading(false);
+        return;
+      }
+
       const { error } = await signUp(email, password);
       if (error) {
-        showMessage('error', error.message);
+        if (error.message.includes('already registered')) {
+          showMessage('error', 'Un compte existe déjà avec cet email.');
+        } else {
+          showMessage('error', error.message);
+        }
       } else {
         showMessage('success', 'Compte créé avec succès ! Vous pouvez maintenant vous connecter.');
         setPassword('');
