@@ -445,7 +445,7 @@ export default function RestaurantMenuSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
@@ -755,31 +755,6 @@ export default function RestaurantMenuSelection() {
           ) : (
             <div className="text-center px-4">
               <h2 className="text-2xl font-bold text-gray-900">{restaurant.restaurant_name}</h2>
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 py-6">
-          {(restaurant.description || restaurant.address || restaurant.hours) && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
-            {restaurant.description && (
-              <p className="text-gray-600 text-sm mb-4">{restaurant.description}</p>
-            )}
-
-            <div className="space-y-2">
-              {restaurant.address && (
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-                  <span>{restaurant.address}</span>
-                </div>
-              )}
-              {restaurant.hours && (
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <Clock size={16} className="flex-shrink-0 mt-0.5" />
-                  <span>{restaurant.hours}</span>
-                </div>
-              )}
-            </div>
             </div>
           )}
         </div>
