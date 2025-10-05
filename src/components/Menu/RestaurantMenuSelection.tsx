@@ -339,12 +339,7 @@ export default function RestaurantMenuSelection() {
     <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="h-16 flex items-center justify-between px-4">
-          {/* Restaurant name */}
-          <h1 className="text-xl font-bold truncate text-black">
-            {restaurant.restaurant_name}
-          </h1>
-
+        <div className="h-16 flex items-center justify-end px-4">
           {/* Desktop/Tablet: Language selector and Contact icons */}
           <div className="hidden md:flex items-center space-x-2">
             {/* Language Selector */}
