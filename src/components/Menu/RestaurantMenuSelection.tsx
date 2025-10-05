@@ -451,7 +451,10 @@ export default function RestaurantMenuSelection() {
       dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}
     >
       {/* Navbar fixe */}
-      <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
+      <nav
+        className="fixed top-0 left-0 right-0 z-40 border-b border-gray-200 shadow-sm"
+        style={{ backgroundColor: restaurant.background_color || '#ffffff' }}
+      >
         <div className="h-16 flex items-center justify-between px-4">
           {/* Booking button on the left (all screens) */}
           <button
