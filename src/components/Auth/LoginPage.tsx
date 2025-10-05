@@ -39,11 +39,8 @@ const LoginPage = () => {
     try {
       const { error } = await signIn(email, password);
       if (error) {
-        // Check if error is related to OAuth account
-        if (error.message.includes('Email link') || error.message.includes('oauth')) {
-          showMessage('error', 'Ce compte a été créé avec Google. Veuillez vous connecter avec Google.');
-        } else if (error.message === 'Invalid login credentials') {
-          showMessage('error', 'Email ou mot de passe incorrect. Si vous vous êtes inscrit avec Google, veuillez utiliser le bouton Google ci-dessous.');
+        if (error.message === 'Invalid login credentials') {
+          showMessage('error', 'Email ou mot de passe incorrect');
         } else {
           showMessage('error', error.message);
         }
@@ -150,7 +147,7 @@ const LoginPage = () => {
       const { error } = await signUp(email, password);
       if (error) {
         if (error.message.includes('already registered') || error.message.includes('User already registered')) {
-          showMessage('error', 'Un compte existe déjà avec cet email. Si vous vous êtes inscrit avec Google, veuillez utiliser le bouton Google ci-dessous.');
+          showMessage('error', 'Un compte existe déjà avec cet email');
         } else {
           showMessage('error', error.message);
         }

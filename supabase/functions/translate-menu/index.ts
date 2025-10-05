@@ -59,7 +59,6 @@ Deno.serve(async (req: Request) => {
 
     const { menuId, targetLanguage, languageName }: TranslateRequest = await req.json();
 
-    // Verify user owns this menu
     const { data: menu, error: menuError } = await supabase
       .from('menus')
       .select('id, user_id, default_language, menu_name, nom')
@@ -71,7 +70,6 @@ Deno.serve(async (req: Request) => {
       throw new Error('Menu not found or access denied');
     }
 
-    // Check if language already exists
     const { data: existingLang } = await supabase
       .from('menu_languages')
       .select('id')
@@ -86,7 +84,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Translate menu title first
     const menuTitleToTranslate = menu.menu_name || menu.nom || 'Menu';
     const titleTranslationPrompt = `Translate this restaurant menu title from French to ${languageName}. Return ONLY the translated text, nothing else: "${menuTitleToTranslate}"`;
 
@@ -116,7 +113,6 @@ Deno.serve(async (req: Request) => {
     const titleData = await titleResponse.json();
     const translatedMenuTitle = titleData.content[0].text.trim().replace(/['"]/g, '');
 
-    // Add language to menu_languages with translated menu title
     const { error: langInsertError } = await supabase
       .from('menu_languages')
       .insert([{
@@ -128,7 +124,6 @@ Deno.serve(async (req: Request) => {
 
     if (langInsertError) throw langInsertError;
 
-    // Fetch all categories and items
     const { data: categories } = await supabase
       .from('categories')
       .select('id, nom, description')
@@ -143,7 +138,6 @@ Deno.serve(async (req: Request) => {
       throw new Error('Failed to fetch menu data');
     }
 
-    // Prepare translation batch
     const itemsToTranslate = [
       ...categories.map((c: Category) => ({
         type: 'category',
@@ -159,10 +153,7 @@ Deno.serve(async (req: Request) => {
       })),
     ];
 
-    // Call Claude API for translation
-    const translationPrompt = `Translate the following restaurant menu items from French to ${languageName}. Return ONLY a JSON array with the same structure, preserving the 'type' and 'id' fields, but translating 'name' and 'description' fields. Keep culinary terms authentic when appropriate.
-
-${JSON.stringify(itemsToTranslate, null, 2)}`;
+    const translationPrompt = `Translate the following restaurant menu items from French to ${languageName}. Return ONLY a JSON array with the same structure, preserving the 'type' and 'id' fields, but translating 'name' and 'description' fields. Keep culinary terms authentic when appropriate.\n\n${JSON.stringify(itemsToTranslate, null, 2)}`;
 
     const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -190,7 +181,6 @@ ${JSON.stringify(itemsToTranslate, null, 2)}`;
     const anthropicData = await anthropicResponse.json();
     const translatedText = anthropicData.content[0].text;
     
-    // Extract JSON from markdown code blocks if present
     let translatedItems;
     const jsonMatch = translatedText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
@@ -199,7 +189,6 @@ ${JSON.stringify(itemsToTranslate, null, 2)}`;
       translatedItems = JSON.parse(translatedText);
     }
 
-    // Insert translations
     const categoryTranslations = translatedItems
       .filter((item: any) => item.type === 'category')
       .map((item: any) => ({
