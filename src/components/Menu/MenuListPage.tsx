@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Eye, CreditCard as Edit, QrCode, Trash2, Copy, Globe, FileText, Settings, List } from 'lucide-react';
+import { Plus, Eye, CreditCard as Edit, QrCode, Trash2, Copy, Globe, FileText, Settings, List, GripVertical } from 'lucide-react';
 import { supabase, Menu, generateSlug } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../Layout/LoadingSpinner';
@@ -19,6 +19,7 @@ export default function MenuListPage() {
   const [menus, setMenus] = useState<Menu[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -33,6 +34,7 @@ export default function MenuListPage() {
         .from('menus')
         .select('*')
         .eq('user_id', user!.id)
+        .order('ordre', { ascending: true })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -135,6 +137,52 @@ export default function MenuListPage() {
     }
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    const newMenus = [...menus];
+    const draggedMenu = newMenus[draggedIndex];
+
+    newMenus.splice(draggedIndex, 1);
+    newMenus.splice(dropIndex, 0, draggedMenu);
+
+    setMenus(newMenus);
+    setDraggedIndex(null);
+
+    try {
+      const updates = newMenus.map((menu, index) => ({
+        id: menu.id,
+        ordre: index
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('menus')
+          .update({ ordre: update.ordre })
+          .eq('id', update.id);
+      }
+
+      showMessage('success', 'Ordre des menus mis à jour');
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de l\'ordre:', error);
+      showMessage('error', 'Erreur lors de la mise à jour de l\'ordre');
+      loadMenus();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -191,10 +239,16 @@ export default function MenuListPage() {
           <>
             {/* Mobile Card View */}
             <div className="block lg:hidden space-y-4">
-              {menus.map((menu) => (
+              {menus.map((menu, index) => (
                 <div
                   key={menu.id}
-                  className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden cursor-move ${
+                    draggedIndex === index ? 'opacity-50' : ''
+                  }`}
                 >
                   {menu.banniere_url ? (
                     <div className="h-32 bg-gray-200">
@@ -214,15 +268,18 @@ export default function MenuListPage() {
 
                   <div className="p-4">
                     <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                          {menu.menu_name || menu.nom}
-                        </h3>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
-                          <span className="text-xs text-gray-500">
-                            {LANGUAGES[menu.language || 'fr']?.name}
-                          </span>
+                      <div className="flex items-start gap-2 flex-1">
+                        <GripVertical className="text-gray-400 mt-1 flex-shrink-0" size={20} />
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                            {menu.menu_name || menu.nom}
+                          </h3>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{LANGUAGES[menu.language || 'fr']?.flag}</span>
+                            <span className="text-xs text-gray-500">
+                              {LANGUAGES[menu.language || 'fr']?.name}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="flex flex-col gap-1.5">
@@ -291,6 +348,7 @@ export default function MenuListPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="w-8 px-2 py-3"></th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Nom du menu
                     </th>
@@ -306,8 +364,20 @@ export default function MenuListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {menus.map((menu) => (
-                    <tr key={menu.id} className="hover:bg-gray-50 transition-colors">
+                  {menus.map((menu, index) => (
+                    <tr
+                      key={menu.id}
+                      draggable
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDrop={(e) => handleDrop(e, index)}
+                      className={`hover:bg-gray-50 transition-colors cursor-move ${
+                        draggedIndex === index ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <td className="px-2 py-4">
+                        <GripVertical className="text-gray-400" size={20} />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {menu.banniere_url ? (

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X } from 'lucide-react';
+import { Menu as MenuIcon, ChevronRight, Phone, MapPin, Clock, Globe, ChevronDown, Smartphone, Check, MessageCircle, Instagram, Facebook, Calendar, X, Loader2, Users } from 'lucide-react';
 import { supabase, RestaurantProfile, Menu } from '../../lib/supabase';
 import LoadingSpinner from '../Layout/LoadingSpinner';
 import GoogleBusinessRating from './GoogleBusinessRating';
 import RestaurantFooter from './RestaurantFooter';
 import QRCode from 'qrcode';
 import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
+import { getColorClasses, injectCustomStyles } from '../../utils/colorUtils';
 
 const LANGUAGES: Record<string, { name: string; flag: string }> = {
   fr: { name: 'Français', flag: '🇫🇷' },
@@ -47,6 +48,19 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+
+  // Reservation states
+  const [reservationLoading, setReservationLoading] = useState(false);
+  const [reservationMessage, setReservationMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [reservationData, setReservationData] = useState({
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    party_size: 2,
+    reservation_date: '',
+    reservation_time: '',
+    special_requests: ''
+  });
 
   // Fetch ALL interface translations at once to avoid race conditions between child components
   const { translations: interfaceTranslations, loading: translationsLoading } = useInterfaceTranslations(
@@ -116,6 +130,10 @@ export default function RestaurantMenuSelection() {
       }
 
       setRestaurant(restaurantData);
+      console.log('Restaurant data loaded:', {
+        name: restaurantData.restaurant_name,
+        hero_background_color: restaurantData.hero_background_color
+      });
 
       const { data: menusData, error: menusError } = await supabase
         .from('menus')
@@ -123,6 +141,7 @@ export default function RestaurantMenuSelection() {
         .eq('user_id', restaurantData.user_id)
         .eq('actif', true)
         .eq('status', 'published')
+        .order('ordre', { ascending: true })
         .order('created_at', { ascending: true });
 
       if (menusError) {
@@ -173,6 +192,34 @@ export default function RestaurantMenuSelection() {
     }
   };
 
+  // Apply custom colors when restaurant data is loaded
+  useEffect(() => {
+    if (restaurant) {
+      const colors = getColorClasses(restaurant);
+      injectCustomStyles(colors);
+    }
+  }, [restaurant]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+
+      // Close language selector if clicking outside
+      if (showLanguageSelector && !target.closest('.language-selector-container')) {
+        setShowLanguageSelector(false);
+      }
+
+      // Close hamburger menu if clicking outside
+      if (isMenuOpen && !target.closest('.hamburger-menu-container')) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLanguageSelector, isMenuOpen]);
+
   const allGroupedMenus: MenuGroup[] = menus.reduce((acc: MenuGroup[], menu) => {
     const existingGroup = acc.find(g => g.menu_name === menu.menu_name);
     if (existingGroup) {
@@ -202,6 +249,78 @@ export default function RestaurantMenuSelection() {
   const formatWhatsAppLink = (whatsapp: string) => {
     const cleanNumber = whatsapp.replace(/\D/g, '');
     return `https://wa.me/${cleanNumber}`;
+  };
+
+  const showReservationMessage = (type: 'success' | 'error', text: string) => {
+    setReservationMessage({ type, text });
+    setTimeout(() => setReservationMessage(null), 5000);
+  };
+
+  const getTomorrowDate = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const handleReservationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!reservationData.customer_name.trim() || !reservationData.customer_phone.trim() ||
+        !reservationData.reservation_date || !reservationData.reservation_time) {
+      showReservationMessage('error', 'Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    setReservationLoading(true);
+
+    try {
+      // Get first menu to use as menu_id for the reservation
+      const firstMenu = menus.length > 0 ? menus[0] : null;
+
+      if (!firstMenu) {
+        showReservationMessage('error', 'Aucun menu disponible pour la réservation');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('reservations')
+        .insert([{
+          menu_id: firstMenu.id,
+          customer_name: reservationData.customer_name,
+          customer_email: null,
+          customer_phone: reservationData.customer_phone,
+          party_size: reservationData.party_size,
+          reservation_date: reservationData.reservation_date,
+          reservation_time: reservationData.reservation_time,
+          special_requests: reservationData.special_requests || null,
+          status: 'pending'
+        }]);
+
+      if (error) throw error;
+
+      showReservationMessage('success', 'Votre réservation a été envoyée avec succès ! Le restaurant vous contactera pour confirmer.');
+      setReservationData({
+        customer_name: '',
+        customer_email: '',
+        customer_phone: '',
+        party_size: 2,
+        reservation_date: '',
+        reservation_time: '',
+        special_requests: ''
+      });
+
+      // Close form after 3 seconds
+      setTimeout(() => {
+        setShowBookingModal(false);
+        setReservationMessage(null);
+      }, 3000);
+
+    } catch (error) {
+      console.error('Erreur lors de la réservation:', error);
+      showReservationMessage('error', 'Erreur lors de l\'envoi de la réservation. Veuillez réessayer.');
+    } finally {
+      setReservationLoading(false);
+    }
   };
 
   const getTranslatedMenuTitle = (menuId: string, languageCode: string, defaultTitle: string): string => {
@@ -327,12 +446,12 @@ export default function RestaurantMenuSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
-          {/* Restaurant name */}
-          <h1 className="text-xl font-bold truncate text-black">
+          {/* Restaurant name on the left */}
+          <h1 className="text-xl font-bold truncate" style={{ color: '#000000' }}>
             {restaurant.restaurant_name}
           </h1>
 
@@ -340,7 +459,7 @@ export default function RestaurantMenuSelection() {
           <div className="hidden md:flex items-center space-x-2">
             {/* Language Selector */}
             {menuLanguages.length > 1 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
                   className="flex items-center gap-2 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
@@ -441,19 +560,10 @@ export default function RestaurantMenuSelection() {
             </div>
           </div>
 
-          {/* Mobile: Booking button, Language selector, and Hamburger menu */}
+          {/* Mobile: Language selector and Hamburger menu on the right */}
           <div className="md:hidden flex items-center space-x-2">
-            {/* Booking button - highlighted */}
-            <button
-              onClick={() => setShowBookingModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
-            >
-              <Calendar size={18} />
-              <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
-            </button>
-
             {menuLanguages.length > 1 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => setShowLanguageSelector(!showLanguageSelector)}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
@@ -491,109 +601,129 @@ export default function RestaurantMenuSelection() {
 
             {/* Hamburger menu button */}
             {(restaurant.telephone || restaurant.whatsapp || restaurant.instagram || restaurant.facebook || restaurant.tiktok) && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsMenuOpen(!isMenuOpen);
-                }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <MenuIcon size={24} className="text-black" />
-              </button>
+              <div className="hamburger-menu-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMenuOpen(!isMenuOpen);
+                  }}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <MenuIcon size={24} className="text-black" />
+                </button>
+              </div>
             )}
           </div>
 
           {/* Hamburger dropdown menu */}
-          {isMenuOpen && (restaurant.telephone || restaurant.whatsapp || restaurant.instagram || restaurant.facebook || restaurant.tiktok) && (
-            <div className="absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
-              </div>
-
-              <div className="py-1">
-                {restaurant.telephone && (
-                  <a
-                    href={`tel:${restaurant.telephone}`}
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Phone size={18} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{restaurant.telephone}</div>
-                    </div>
-                  </a>
-                )}
-
-                {restaurant.whatsapp && (
-                  <a
-                    href={formatWhatsAppLink(restaurant.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
-                  >
-                    <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MessageCircle size={18} className="text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{restaurant.whatsapp}</div>
-                    </div>
-                  </a>
-                )}
-
-                {restaurant.instagram && (
-                  <a
-                    href={restaurant.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
-                  >
-                    <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Instagram size={18} className="text-pink-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Instagram</div>
-                      <div className="text-sm text-gray-600">Suivez-nous</div>
-                    </div>
-                  </a>
-                )}
-
-                {restaurant.facebook && (
-                  <a
-                    href={restaurant.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Facebook size={18} className="text-blue-700" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Facebook</div>
-                      <div className="text-sm text-gray-600">Suivez-nous</div>
-                    </div>
-                  </a>
-                )}
-
-                {restaurant.tiktok && (
-                  <a
-                    href={restaurant.tiktok}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200"
-                  >
-                    <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">T</span>
+          {isMenuOpen && (
+            <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
+              <div className="py-2">
+                {/* Menu Links */}
+                {menus.map((menu) => {
+                  const menuSlugPart = menu.slug.split('/').pop();
+                  return (
+                    <Link
+                      key={menu.id}
+                      to={`/m/${slug}/${menuSlugPart}?lang=${selectedLanguage}`}
+                      className="flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MenuIcon size={18} className="text-orange-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {menuTitleTranslations[menu.id]?.[selectedLanguage] || menu.menu_name}
+                          </div>
+                          {menu.description && (
+                            <div className="text-xs text-gray-500 line-clamp-1">{menu.description}</div>
+                          )}
+                        </div>
                       </div>
+                      <ChevronRight size={18} className="text-gray-400" />
+                    </Link>
+                  );
+                })}
+
+                {/* Contact Icons in one line */}
+                <div className="px-4 py-4 border-b border-gray-50">
+                  <div className="flex items-center justify-center gap-3">
+                    {/* Booking button */}
+                    <button
+                      onClick={() => {
+                        setShowBookingModal(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all flex-1 justify-center"
+                    >
+                      <Calendar size={18} />
+                      <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
+                    </button>
+
+                    {restaurant.telephone && (
+                      <a
+                        href={`tel:${restaurant.telephone}`}
+                        className="p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <Phone size={20} />
+                      </a>
+                    )}
+
+                    {restaurant.whatsapp && (
+                      <a
+                        href={formatWhatsAppLink(restaurant.whatsapp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                      >
+                        <MessageCircle size={20} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Social Icons at bottom */}
+                {(restaurant.instagram || restaurant.facebook || restaurant.tiktok) && (
+                  <div className="px-4 py-4 bg-gray-50">
+                    <div className="flex items-center justify-center gap-3">
+                      {restaurant.instagram && (
+                        <a
+                          href={restaurant.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-all"
+                        >
+                          <Instagram size={20} />
+                        </a>
+                      )}
+
+                      {restaurant.facebook && (
+                        <a
+                          href={restaurant.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                        >
+                          <Facebook size={20} />
+                        </a>
+                      )}
+
+                      {restaurant.tiktok && (
+                        <a
+                          href={restaurant.tiktok}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                        >
+                          <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">T</span>
+                          </div>
+                        </a>
+                      )}
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900">TikTok</div>
-                      <div className="text-sm text-gray-600">Suivez-nous</div>
-                    </div>
-                  </a>
+                  </div>
                 )}
               </div>
             </div>
@@ -607,6 +737,7 @@ export default function RestaurantMenuSelection() {
         <div
           className="h-48 flex items-center justify-center overflow-hidden"
           style={{ backgroundColor: restaurant.hero_background_color || '#f3f4f6' }}
+          data-hero-color={restaurant.hero_background_color}
         >
           {restaurant.logo_url ? (
             <div className="flex items-center justify-center h-full px-4">
@@ -625,31 +756,6 @@ export default function RestaurantMenuSelection() {
           ) : (
             <div className="text-center px-4">
               <h2 className="text-2xl font-bold text-gray-900">{restaurant.restaurant_name}</h2>
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 py-6">
-          {(restaurant.description || restaurant.address || restaurant.hours) && (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6">
-            {restaurant.description && (
-              <p className="text-gray-600 text-sm mb-4">{restaurant.description}</p>
-            )}
-
-            <div className="space-y-2">
-              {restaurant.address && (
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <MapPin size={16} className="flex-shrink-0 mt-0.5" />
-                  <span>{restaurant.address}</span>
-                </div>
-              )}
-              {restaurant.hours && (
-                <div className="flex items-start space-x-2 text-sm text-gray-600">
-                  <Clock size={16} className="flex-shrink-0 mt-0.5" />
-                  <span>{restaurant.hours}</span>
-                </div>
-              )}
-            </div>
             </div>
           )}
         </div>
@@ -724,54 +830,157 @@ export default function RestaurantMenuSelection() {
 
       {/* Booking Modal */}
       {showBookingModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">{getTranslation(interfaceTranslations, 'book_table', 'Réserver une table')}</h2>
-              <button
-                onClick={() => setShowBookingModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <X size={24} className="text-gray-500" />
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 mb-4">
-                {getTranslation(interfaceTranslations, 'contact_us_directly', 'Pour réserver une table, veuillez nous contacter directement :')}
-              </p>
-              <div className="space-y-3">
-                {restaurant.telephone && (
-                  <a
-                    href={`tel:${restaurant.telephone}`}
-                    className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Phone size={20} className="text-blue-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{restaurant.telephone}</div>
-                    </div>
-                  </a>
-                )}
-                {restaurant.whatsapp && (
-                  <a
-                    href={formatWhatsAppLink(restaurant.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
-                  >
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <MessageCircle size={20} className="text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{restaurant.whatsapp}</div>
-                    </div>
-                  </a>
-                )}
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">{getTranslation(interfaceTranslations, 'book_table', 'Réserver une table')}</h2>
+                <button
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    setReservationMessage(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
+
+            {/* Message */}
+            {reservationMessage && (
+              <div className={`mx-6 mt-4 p-4 rounded-lg flex items-start space-x-2 ${
+                reservationMessage.type === 'success'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {reservationMessage.type === 'success' ? (
+                  <Check className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <X className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                )}
+                <span className="text-sm">{reservationMessage.text}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleReservationSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nom complet *
+                </label>
+                <input
+                  type="text"
+                  value={reservationData.customer_name}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="Votre nom"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Téléphone *
+                </label>
+                <input
+                  type="tel"
+                  value={reservationData.customer_phone}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, customer_phone: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  placeholder="06 12 34 56 78"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  value={reservationData.reservation_date}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_date: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  min={getTomorrowDate()}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Heure *
+                </label>
+                <input
+                  type="time"
+                  value={reservationData.reservation_time}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, reservation_time: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white text-base [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-left"
+                  style={{ colorScheme: 'light' }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombre de personnes *
+                </label>
+                <select
+                  value={reservationData.party_size}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, party_size: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white"
+                  required
+                >
+                  {[1,2,3,4,5,6,7,8,9,10].map(num => (
+                    <option key={num} value={num}>
+                      {num} personne{num > 1 ? 's' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Demandes spéciales (optionnel)
+                </label>
+                <textarea
+                  value={reservationData.special_requests}
+                  onChange={(e) => setReservationData(prev => ({ ...prev, special_requests: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 bg-white resize-none"
+                  rows={3}
+                  placeholder="Allergies, préférences de table, occasion spéciale..."
+                />
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBookingModal(false);
+                    setReservationMessage(null);
+                  }}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={reservationLoading}
+                  className="flex-1 px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center space-x-2"
+                >
+                  {reservationLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <Calendar className="w-5 h-5" />
+                      <span>Réserver</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

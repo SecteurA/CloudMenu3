@@ -15,11 +15,70 @@ export default function RestaurantFooter({ restaurant, selectedLanguage, transla
     return `https://wa.me/${cleanNumber}`;
   };
 
+  const getEmbeddableMapUrl = (url: string): string | null => {
+    if (!url) return null;
+
+    // Add https:// if missing
+    let fullUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      fullUrl = 'https://' + url;
+    }
+
+    // If it's already an embed URL, return it
+    if (fullUrl.includes('/embed')) {
+      return fullUrl;
+    }
+
+    // Extract place ID or coordinates from various Google Maps URL formats
+    try {
+      // Format: https://goo.gl/maps/... or https://maps.app.goo.gl/...
+      // These shortened URLs need to be converted - we'll open them in a new window instead
+      if (fullUrl.includes('goo.gl') || fullUrl.includes('maps.app.goo.gl')) {
+        // Cannot embed shortened URLs - return null to show link instead
+        return null;
+      }
+
+      // Extract coordinates from URL like: /@48.8099584,2.1302607,17z/
+      const coordsMatch = fullUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+)z/);
+      if (coordsMatch) {
+        const lat = coordsMatch[1];
+        const lng = coordsMatch[2];
+        const zoom = coordsMatch[3];
+        // Use the coordinates to create an embed URL
+        return `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+      }
+
+      // Format: https://maps.google.com/?q=lat,lng
+      const coordMatch = fullUrl.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      if (coordMatch) {
+        return `https://maps.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&output=embed`;
+      }
+
+      // Extract place name from URL like: /place/La+Napoli/
+      const placeMatch = fullUrl.match(/place\/([^/@?]+)/);
+      if (placeMatch) {
+        const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+        // Use place name with coordinates if available
+        if (coordsMatch) {
+          return `https://maps.google.com/maps?q=${placeName}&ll=${coordsMatch[1]},${coordsMatch[2]}&z=${coordsMatch[3]}&output=embed`;
+        }
+        return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&output=embed`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error parsing map URL:', error);
+      return null;
+    }
+  };
+
   const contact = getTranslation(translations, 'contact', 'Contact');
   const followUs = getTranslation(translations, 'follow_us', 'Suivez-nous');
   const poweredBy = getTranslation(translations, 'powered_by', 'Propulsé par');
   const location = getTranslation(translations, 'our_location', 'Notre emplacement');
   const rights = getTranslation(translations, 'all_rights_reserved', 'Tous droits réservés.');
+
+  const embeddableMapUrl = restaurant.location ? getEmbeddableMapUrl(restaurant.location) : null;
 
   const hasContactInfo = restaurant.telephone || restaurant.whatsapp || restaurant.address || restaurant.hours;
   const hasSocialMedia = restaurant.instagram || restaurant.facebook || restaurant.tiktok;
@@ -112,18 +171,30 @@ export default function RestaurantFooter({ restaurant, selectedLanguage, transla
           {restaurant.location && (
             <div className={`${!hasSocialMedia && hasContactInfo ? 'md:col-span-2 lg:col-span-1' : ''}`}>
               <h3 className="text-lg font-bold text-orange-500 mb-4">{location}</h3>
-              <div className="aspect-video w-full rounded-lg overflow-hidden">
-                <iframe
-                  src={restaurant.location}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="w-full h-full"
-                />
-              </div>
+              {embeddableMapUrl ? (
+                <div className="aspect-video w-full rounded-lg overflow-hidden">
+                  <iframe
+                    src={embeddableMapUrl}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="w-full h-full"
+                  />
+                </div>
+              ) : (
+                <a
+                  href={restaurant.location}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full aspect-video bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all font-medium"
+                >
+                  <MapPin size={24} />
+                  <span>Voir sur Google Maps</span>
+                </a>
+              )}
             </div>
           )}
         </div>

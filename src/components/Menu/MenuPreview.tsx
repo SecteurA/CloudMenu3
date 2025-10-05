@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
-import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
+import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, ChevronRight, LayoutGrid, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
+import RestaurantFooter from './RestaurantFooter';
+import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
 
 const LANGUAGES = {
   fr: { name: 'Français', flag: '🇫🇷', rtl: false },
@@ -81,6 +83,19 @@ const MenuPreview = () => {
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const navRef = useRef<HTMLDivElement>(null);
   const categoryButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const { translations: interfaceTranslations } = useInterfaceTranslations(
+    currentLanguage,
+    [
+      'reserve',
+      'book_table',
+      'contact',
+      'follow_us',
+      'powered_by',
+      'our_location',
+      'all_rights_reserved'
+    ]
+  );
 
   useEffect(() => {
     const checkMobile = () => {
@@ -427,18 +442,30 @@ const MenuPreview = () => {
   }, [categories, activeCategory]);
 
   // Fermer le menu en cliquant à l'extérieur
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (isMenuOpen) {
+      const target = event.target as HTMLElement;
+
+      // Close hamburger menu if clicking outside
+      if (isMenuOpen && !target.closest('.hamburger-menu-container')) {
         setIsMenuOpen(false);
+      }
+
+      // Close language selector if clicking outside
+      if (showLanguageSelector && !target.closest('.language-selector-container')) {
+        setShowLanguageSelector(false);
+      }
+
+      // Close menu selector if clicking outside
+      if (showMenuSelector && !target.closest('.menu-selector-container')) {
+        setShowMenuSelector(false);
       }
     };
 
-    if (isMenuOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [isMenuOpen]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isMenuOpen, showLanguageSelector, showMenuSelector]);
 
   const formatWhatsAppLink = (phone: string) => {
     // Nettoyer le numéro et le formater pour WhatsApp
@@ -621,14 +648,14 @@ const MenuPreview = () => {
             style={{ color: '#000000' }}
             onClick={() => navigate(`/m/${slug}`)}
           >
-            {menu.nom}
+            {restaurantProfile?.restaurant_name || menu.nom}
           </h1>
 
           {/* Desktop: Language selector and Contact icons */}
           <div className={`hidden lg:flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
             {/* Language Selector */}
             {availableLanguages.length > 0 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => {
                     setShowLanguageSelector(!showLanguageSelector);
@@ -746,20 +773,10 @@ const MenuPreview = () => {
             </div>
           </div>
 
-          {/* Mobile: Reservation button, Language selector, and Hamburger menu */}
+          {/* Mobile: Language selector and Hamburger menu */}
           <div className={`lg:hidden flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
-            {/* Reservation button - highlighted */}
-            <button
-              onClick={() => setShowReservationForm(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
-              style={{ backgroundColor: menu.couleur_primaire }}
-            >
-              <Calendar size={18} />
-              <span className="text-sm font-medium">Réserver</span>
-            </button>
-
             {availableLanguages.length > 0 && (
-              <div className="relative">
+              <div className="relative language-selector-container">
                 <button
                   onClick={() => {
                     setShowLanguageSelector(!showLanguageSelector);
@@ -809,120 +826,131 @@ const MenuPreview = () => {
               </div>
             )}
 
-            {/* Mobile/Tablet: Hamburger menu button - only show if there are contact items */}
-            {(restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
+            {/* Mobile/Tablet: Hamburger menu button */}
+            <div className="hamburger-menu-container">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsMenuOpen(!isMenuOpen);
                 }}
-                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors border-0 outline-none focus:outline-none"
+                style={{ border: 'none', outline: 'none' }}
               >
                 <MenuIcon size={24} className="text-black" />
               </button>
-            )}
+            </div>
           </div>
-          
-          {/* Menu déroulant */}
-          {isMenuOpen && (restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
-            <div className="absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
-              </div>
-              
-              <div className="py-1">
-                {/* Téléphone */}
-                {restaurantProfile?.telephone && (
-                  <a
-                    href={`tel:${restaurantProfile?.telephone}`}
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Phone size={18} className="text-blue-600" />
+
+          {/* Hamburger dropdown menu */}
+          {isMenuOpen && (
+            <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
+              <div className="py-2">
+                {/* Menu Links */}
+                {allMenus.map((menuItem) => {
+                  const menuSlugPart = menuItem.slug.split('/').pop();
+                  return (
+                    <button
+                      key={menuItem.id}
+                      onClick={() => {
+                        navigate(`/m/${slug}/${menuSlugPart}?lang=${currentLanguage}`);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    >
+                      <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MenuIcon size={18} className="text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="font-medium text-gray-900">
+                            {menuItem.menu_name}
+                          </div>
+                          {menuItem.description && (
+                            <div className="text-xs text-gray-500 line-clamp-1">{menuItem.description}</div>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className="text-gray-400 flex-shrink-0 ml-2" />
+                    </button>
+                  );
+                })}
+
+                {/* Contact Icons in one line */}
+                <div className="px-4 py-4 border-b border-gray-50">
+                  <div className="flex items-center justify-center gap-3">
+                    {/* Booking button */}
+                    <button
+                      onClick={() => {
+                        setShowReservationForm(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all flex-1 justify-center"
+                    >
+                      <Calendar size={18} />
+                      <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
+                    </button>
+
+                    {restaurantProfile?.telephone && (
+                      <a
+                        href={`tel:${restaurantProfile.telephone}`}
+                        className="p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <Phone size={20} />
+                      </a>
+                    )}
+
+                    {restaurantProfile?.whatsapp && (
+                      <a
+                        href={formatWhatsAppLink(restaurantProfile.whatsapp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                      >
+                        <MessageCircle size={20} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Social Icons at bottom */}
+                {(restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
+                  <div className="px-4 py-4 bg-gray-50">
+                    <div className="flex items-center justify-center gap-3">
+                      {restaurantProfile?.instagram && (
+                        <a
+                          href={restaurantProfile.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-all"
+                        >
+                          <Instagram size={20} />
+                        </a>
+                      )}
+
+                      {restaurantProfile?.facebook && (
+                        <a
+                          href={restaurantProfile.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                        >
+                          <Facebook size={20} />
+                        </a>
+                      )}
+
+                      {restaurantProfile?.tiktok && (
+                        <a
+                          href={restaurantProfile.tiktok}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                        >
+                          <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">T</span>
+                          </div>
+                        </a>
+                      )}
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{restaurantProfile?.telephone}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* WhatsApp */}
-                {restaurantProfile?.whatsapp && (
-                  <a
-                    href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MessageCircle size={18} className="text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{restaurantProfile?.whatsapp}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Instagram */}
-                {restaurantProfile?.instagram && (
-                  <a
-                    href={restaurantProfile?.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Instagram size={18} className="text-pink-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Instagram</div>
-                      <div className="text-sm text-gray-600">@{restaurantProfile?.instagram.split('/').pop()}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Facebook */}
-                {restaurantProfile?.facebook && (
-                  <a
-                    href={restaurantProfile?.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Facebook size={18} className="text-blue-700" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Facebook</div>
-                      <div className="text-sm text-gray-600">Voir la page</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* TikTok */}
-                {restaurantProfile?.tiktok && (
-                  <a
-                    href={restaurantProfile?.tiktok}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">T</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">TikTok</div>
-                      <div className="text-sm text-gray-600">@{restaurantProfile?.tiktok.split('/').pop()?.replace('@', '')}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Message si aucun contact configuré */}
-                {!restaurantProfile?.telephone && !restaurantProfile?.whatsapp && !restaurantProfile?.instagram && !restaurantProfile?.facebook && !restaurantProfile?.tiktok && (
-                  <div className="px-4 py-8 text-gray-500 text-center">
-                    Aucune information de contact configurée
                   </div>
                 )}
               </div>
@@ -1163,7 +1191,7 @@ const MenuPreview = () => {
                                     </p>
                                   )}
 
-                                  {item.allergenes.length > 0 && (
+                                  {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                     <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
                                       Allergènes: {item.allergenes.join(', ')}
                                     </p>
@@ -1260,7 +1288,7 @@ const MenuPreview = () => {
                                   </p>
                                 )}
                                 
-                                {item.allergenes.length > 0 && (
+                                {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                   <p className="text-xs text-gray-500 mb-4 bg-gray-50 px-3 py-1 rounded-lg">
                                     Allergènes: {item.allergenes.join(', ')}
                                   </p>
@@ -1289,25 +1317,12 @@ const MenuPreview = () => {
         </div>
 
         {/* Footer */}
-        {(menu.afficher_powered_by || menu.lien_cloudmenu) && (
-          <footer className="text-center py-8 border-t border-gray-200 bg-gray-50 mx-4 lg:mx-0 lg:rounded-t-2xl">
-            {menu.afficher_powered_by && (
-              <p className="text-base text-gray-500 mb-3">
-                Propulsé par CloudMenu
-              </p>
-            )}
-            {menu.lien_cloudmenu && (
-              <a 
-                href="https://cloudmenu.com" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-base hover:underline"
-                style={{ color: menu.couleur_primaire }}
-              >
-                Créer mon menu gratuitement avec CloudMenu
-              </a>
-            )}
-          </footer>
+        {restaurantProfile && (
+          <RestaurantFooter
+            restaurant={restaurantProfile}
+            selectedLanguage={currentLanguage}
+            translations={interfaceTranslations}
+          />
         )}
       </div>
 
