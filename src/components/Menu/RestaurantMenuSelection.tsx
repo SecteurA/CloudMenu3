@@ -50,7 +50,7 @@ export default function RestaurantMenuSelection() {
 
   const { translations: interfaceTranslations, loading: translationsLoading } = useInterfaceTranslations(
     selectedLanguage,
-    ['our_menus', 'no_menus_available']
+    ['our_menus', 'no_menus_available', 'reserve', 'book_table', 'contact_us_directly']
   );
 
   useEffect(() => {
@@ -435,7 +435,7 @@ export default function RestaurantMenuSelection() {
               className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
             >
               <Calendar size={18} />
-              <span className="text-sm font-medium">Réserver</span>
+              <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
             </button>
 
             {menuLanguages.length > 1 && (
@@ -708,7 +708,7 @@ export default function RestaurantMenuSelection() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">Réserver une table</h2>
+              <h2 className="text-xl font-bold text-gray-900">{getTranslation(interfaceTranslations, 'book_table', 'Réserver une table')}</h2>
               <button
                 onClick={() => setShowBookingModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -718,7 +718,7 @@ export default function RestaurantMenuSelection() {
             </div>
             <div className="p-6">
               <p className="text-gray-600 mb-4">
-                Pour réserver une table, veuillez nous contacter directement :
+                {getTranslation(interfaceTranslations, 'contact_us_directly', 'Pour réserver une table, veuillez nous contacter directement :')}
               </p>
               <div className="space-y-3">
                 {restaurant.telephone && (
