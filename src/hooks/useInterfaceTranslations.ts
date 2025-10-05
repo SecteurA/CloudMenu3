@@ -93,6 +93,3 @@ export function getTranslation(
 ): string {
   return translations[key] || fallback;
 }
-
-
-export { useInterfaceTranslations, getTranslation }
