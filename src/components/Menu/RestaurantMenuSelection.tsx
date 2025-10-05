@@ -48,6 +48,7 @@ export default function RestaurantMenuSelection() {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [menuLanguages, setMenuLanguages] = useState<string[]>([]);
   const [menuTitleTranslations, setMenuTitleTranslations] = useState<Record<string, Record<string, string>>>({});
+  const [menuDescriptionTranslations, setMenuDescriptionTranslations] = useState<Record<string, Record<string, string>>>({});
   const [visitTracked, setVisitTracked] = useState(false);
 
   // Reservation states
@@ -196,13 +197,19 @@ export default function RestaurantMenuSelection() {
 
             // Store menu title translations: { menuId: { languageCode: title } }
             const translations: Record<string, Record<string, string>> = {};
+            const descriptionTranslations: Record<string, Record<string, string>> = {};
             languagesData.forEach(lang => {
               if (!translations[lang.menu_id]) {
                 translations[lang.menu_id] = {};
               }
+              if (!descriptionTranslations[lang.menu_id]) {
+                descriptionTranslations[lang.menu_id] = {};
+              }
               translations[lang.menu_id][lang.language_code] = lang.menu_title || '';
+              descriptionTranslations[lang.menu_id][lang.language_code] = (lang as any).menu_description || '';
             });
             setMenuTitleTranslations(translations);
+            setMenuDescriptionTranslations(descriptionTranslations);
           }
         }
       }
@@ -658,8 +665,10 @@ export default function RestaurantMenuSelection() {
                           <div className="font-medium text-gray-900">
                             {menuTitleTranslations[menu.id]?.[selectedLanguage] || menu.menu_name}
                           </div>
-                          {menu.description && (
-                            <div className="text-xs text-gray-500 line-clamp-1">{menu.description}</div>
+                          {(menuDescriptionTranslations[menu.id]?.[selectedLanguage] || menu.description) && (
+                            <div className="text-xs text-gray-500 line-clamp-1">
+                              {menuDescriptionTranslations[menu.id]?.[selectedLanguage] || menu.description}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -831,8 +840,10 @@ export default function RestaurantMenuSelection() {
                             </span>
                           )}
                         </div>
-                        {group.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
+                        {(menuDescriptionTranslations[menu.id]?.[selectedLanguage] || group.description) && (
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {menuDescriptionTranslations[menu.id]?.[selectedLanguage] || group.description}
+                          </p>
                         )}
                       </div>
                     </div>

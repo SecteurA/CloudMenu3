@@ -1115,8 +1115,14 @@ const MenuPreview = () => {
                     ? categoryTranslations[category.id].nom
                     : category.nom}
                         </h2>
-                        {category.description && (
-                          <p className="text-base lg:text-lg text-gray-600 mt-2">{category.description}</p>
+                        {(currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]?.description
+                          ? categoryTranslations[category.id].description
+                          : category.description) && (
+                          <p className="text-base lg:text-lg text-gray-600 mt-2">
+                            {currentLanguage !== (menu.default_language || 'fr') && categoryTranslations[category.id]?.description
+                              ? categoryTranslations[category.id].description
+                              : category.description}
+                          </p>
                         )}
                         <div className="hidden lg:block w-16 h-1 bg-current mx-auto mt-4 rounded-full" 
                              style={{ backgroundColor: menu.couleur_primaire }} />
