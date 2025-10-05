@@ -765,7 +765,7 @@ export default function RestaurantMenuSelection() {
               <img
                 src={restaurant.logo_url}
                 alt={restaurant.restaurant_name}
-                className="max-h-32 max-w-full object-contain"
+                className="h-full w-full object-contain"
               />
             </div>
           ) : restaurant.banner_url ? (
