@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface InterfaceTranslation {
@@ -15,8 +15,12 @@ interface TranslationCache {
 const translationCache: TranslationCache = {};
 
 export function useInterfaceTranslations(languageCode: string, keys: string[]) {
-  const [translations, setTranslations] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
+  // Initialize with cached data if available
+  const [translations, setTranslations] = useState<Record<string, string>>(
+    () => translationCache[languageCode] || {}
+  );
+  const [loading, setLoading] = useState(!translationCache[languageCode]);
+  const previousLangRef = useRef<string>(languageCode);
 
   useEffect(() => {
     let isMounted = true;
@@ -27,13 +31,13 @@ export function useInterfaceTranslations(languageCode: string, keys: string[]) {
         if (isMounted) {
           setTranslations(translationCache[languageCode]);
           setLoading(false);
+          previousLangRef.current = languageCode;
         }
         return;
       }
 
-      // Clear old translations and show loading state when fetching new language
-      if (isMounted) {
-        setTranslations({});
+      // Show loading when fetching new language
+      if (isMounted && previousLangRef.current !== languageCode) {
         setLoading(true);
       }
 
@@ -61,6 +65,7 @@ export function useInterfaceTranslations(languageCode: string, keys: string[]) {
 
         if (isMounted) {
           setTranslations(translationsMap);
+          previousLangRef.current = languageCode;
           setLoading(false);
         }
       } catch (error) {
@@ -88,3 +93,6 @@ export function getTranslation(
 ): string {
   return translations[key] || fallback;
 }
+
+
+export { useInterfaceTranslations, getTranslation }
