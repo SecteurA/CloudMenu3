@@ -130,6 +130,10 @@ export default function RestaurantMenuSelection() {
       }
 
       setRestaurant(restaurantData);
+      console.log('Restaurant data loaded:', {
+        name: restaurantData.restaurant_name,
+        hero_background_color: restaurantData.hero_background_color
+      });
 
       const { data: menusData, error: menusError } = await supabase
         .from('menus')
@@ -718,6 +722,7 @@ export default function RestaurantMenuSelection() {
         <div
           className="h-48 flex items-center justify-center overflow-hidden"
           style={{ backgroundColor: restaurant.hero_background_color || '#f3f4f6' }}
+          data-hero-color={restaurant.hero_background_color}
         >
           {restaurant.logo_url ? (
             <div className="flex items-center justify-center h-full px-4">
