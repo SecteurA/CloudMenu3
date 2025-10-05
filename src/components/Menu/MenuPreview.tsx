@@ -648,7 +648,7 @@ const MenuPreview = () => {
             style={{ color: '#000000' }}
             onClick={() => navigate(`/m/${slug}`)}
           >
-            {menu.nom}
+            {restaurantProfile?.nom_restaurant || menu.nom}
           </h1>
 
           {/* Desktop: Language selector and Contact icons */}
@@ -773,18 +773,8 @@ const MenuPreview = () => {
             </div>
           </div>
 
-          {/* Mobile: Reservation button, Language selector, and Hamburger menu */}
+          {/* Mobile: Language selector and Hamburger menu */}
           <div className={`lg:hidden flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-2`}>
-            {/* Reservation button - highlighted */}
-            <button
-              onClick={() => setShowReservationForm(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
-              style={{ backgroundColor: menu.couleur_primaire }}
-            >
-              <Calendar size={18} />
-              <span className="text-sm font-medium">Réserver</span>
-            </button>
-
             {availableLanguages.length > 0 && (
               <div className="relative language-selector-container">
                 <button

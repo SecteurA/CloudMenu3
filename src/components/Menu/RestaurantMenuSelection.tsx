@@ -449,14 +449,10 @@ export default function RestaurantMenuSelection() {
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
-          {/* Booking button on the left (all screens) */}
-          <button
-            onClick={() => setShowBookingModal(true)}
-            className="flex items-center gap-2 px-3 md:px-4 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all"
-          >
-            <Calendar size={18} />
-            <span className="text-sm md:text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
-          </button>
+          {/* Restaurant name on the left */}
+          <h1 className="text-xl font-bold truncate" style={{ color: '#000000' }}>
+            {restaurant.nom_restaurant}
+          </h1>
 
           {/* Desktop/Tablet: Language selector and Contact icons */}
           <div className="hidden md:flex items-center space-x-2">
