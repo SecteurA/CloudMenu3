@@ -623,29 +623,32 @@ export default function RestaurantMenuSelection() {
             <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
               <div className="py-2">
                 {/* Menu Links */}
-                {menus.map((menu) => (
-                  <Link
-                    key={menu.id}
-                    to={`/m/${slug}/${menu.slug.split('/').pop()}`}
-                    className="flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <MenuIcon size={18} className="text-orange-600" />
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-900">
-                          {menuTitleTranslations[menu.id]?.[selectedLanguage] || menu.menu_name}
+                {menus.map((menu) => {
+                  const menuSlugPart = menu.slug.split('/').pop();
+                  return (
+                    <Link
+                      key={menu.id}
+                      to={`/m/${slug}/${menuSlugPart}?lang=${selectedLanguage}`}
+                      className="flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MenuIcon size={18} className="text-orange-600" />
                         </div>
-                        {menu.description && (
-                          <div className="text-xs text-gray-500 line-clamp-1">{menu.description}</div>
-                        )}
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {menuTitleTranslations[menu.id]?.[selectedLanguage] || menu.menu_name}
+                          </div>
+                          {menu.description && (
+                            <div className="text-xs text-gray-500 line-clamp-1">{menu.description}</div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <ChevronRight size={18} className="text-gray-400" />
-                  </Link>
-                ))}
+                      <ChevronRight size={18} className="text-gray-400" />
+                    </Link>
+                  );
+                })}
 
                 {/* Contact Icons in one line */}
                 <div className="px-4 py-4 border-b border-gray-50">
