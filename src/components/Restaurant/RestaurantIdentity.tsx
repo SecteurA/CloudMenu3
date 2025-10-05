@@ -554,28 +554,6 @@ export default function RestaurantIdentity() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur de Fond</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={formData.background_color}
-                    onChange={(e) => handleInputChange('background_color', e.target.value)}
-                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <input
-                      type="text"
-                      value={formData.background_color}
-                      onChange={(e) => handleInputChange('background_color', e.target.value)}
-                      placeholder="#ffffff"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Couleur de fond de la page</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Couleur de Fond du Hero</label>
                 <div className="flex items-center gap-3">
                   <input
