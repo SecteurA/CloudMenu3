@@ -18,39 +18,51 @@ export default function RestaurantFooter({ restaurant, selectedLanguage, transla
   const getEmbeddableMapUrl = (url: string): string | null => {
     if (!url) return null;
 
+    // Add https:// if missing
+    let fullUrl = url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      fullUrl = 'https://' + url;
+    }
+
     // If it's already an embed URL, return it
-    if (url.includes('/embed')) {
-      return url;
+    if (fullUrl.includes('/embed')) {
+      return fullUrl;
     }
 
     // Extract place ID or coordinates from various Google Maps URL formats
     try {
-      // Format: https://maps.google.com/?q=lat,lng
-      const coordMatch = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-      if (coordMatch) {
-        return `https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d!2d${coordMatch[2]}!3d${coordMatch[1]}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1`;
-      }
-
-      // Format: https://www.google.com/maps/place/...
-      const placeMatch = url.match(/place\/([^/]+)/);
-      if (placeMatch) {
-        const placeName = encodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
-        return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${placeName}`;
-      }
-
       // Format: https://goo.gl/maps/... or https://maps.app.goo.gl/...
       // These shortened URLs need to be converted - we'll open them in a new window instead
-      if (url.includes('goo.gl') || url.includes('maps.app.goo.gl')) {
+      if (fullUrl.includes('goo.gl') || fullUrl.includes('maps.app.goo.gl')) {
         // Cannot embed shortened URLs - return null to show link instead
         return null;
       }
 
-      // Default: try to extract place name from URL
-      const urlObj = new URL(url);
-      const searchParams = new URLSearchParams(urlObj.search);
-      const query = searchParams.get('q');
-      if (query) {
-        return `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${encodeURIComponent(query)}`;
+      // Extract coordinates from URL like: /@48.8099584,2.1302607,17z/
+      const coordsMatch = fullUrl.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*),(\d+)z/);
+      if (coordsMatch) {
+        const lat = coordsMatch[1];
+        const lng = coordsMatch[2];
+        const zoom = coordsMatch[3];
+        // Use the coordinates to create an embed URL
+        return `https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`;
+      }
+
+      // Format: https://maps.google.com/?q=lat,lng
+      const coordMatch = fullUrl.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+      if (coordMatch) {
+        return `https://maps.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&output=embed`;
+      }
+
+      // Extract place name from URL like: /place/La+Napoli/
+      const placeMatch = fullUrl.match(/place\/([^/@?]+)/);
+      if (placeMatch) {
+        const placeName = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+        // Use place name with coordinates if available
+        if (coordsMatch) {
+          return `https://maps.google.com/maps?q=${placeName}&ll=${coordsMatch[1]},${coordsMatch[2]}&z=${coordsMatch[3]}&output=embed`;
+        }
+        return `https://maps.google.com/maps?q=${encodeURIComponent(placeName)}&output=embed`;
       }
 
       return null;
