@@ -807,10 +807,10 @@ export default function RestaurantMenuSelection() {
                     to={`/m/${slug}/${menuSlugPart}?lang=${selectedLanguage}`}
                     className="block bg-white rounded-lg shadow-sm border-2 border-gray-200 hover:border-orange-500 transition-all overflow-hidden"
                   >
-                    <div className="flex items-center">
+                    <div className="flex items-stretch">
                       {/* Menu Banner Image */}
                       {menu.banniere_url && (
-                        <div className="w-24 h-24 flex-shrink-0">
+                        <div className="w-40 flex-shrink-0">
                           <img
                             src={menu.banniere_url}
                             alt={translatedTitle}
@@ -820,23 +820,20 @@ export default function RestaurantMenuSelection() {
                       )}
 
                       {/* Content */}
-                      <div className="flex items-center justify-between flex-1 p-5">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {translatedTitle}
-                            </h3>
-                            {!hasTranslation && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
-                                {LANGUAGES[defaultLang]?.flag || '🌐'} {LANGUAGES[defaultLang]?.name || defaultLang.toUpperCase()}
-                              </span>
-                            )}
-                          </div>
-                          {group.description && (
-                            <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
+                      <div className="flex-1 p-5">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {translatedTitle}
+                          </h3>
+                          {!hasTranslation && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                              {LANGUAGES[defaultLang]?.flag || '🌐'} {LANGUAGES[defaultLang]?.name || defaultLang.toUpperCase()}
+                            </span>
                           )}
                         </div>
-                        <ChevronRight className="flex-shrink-0 ml-3 text-gray-400" size={20} />
+                        {group.description && (
+                          <p className="text-sm text-gray-600 line-clamp-2">{group.description}</p>
+                        )}
                       </div>
                     </div>
                   </Link>
