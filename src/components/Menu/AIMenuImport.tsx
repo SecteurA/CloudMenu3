@@ -240,8 +240,8 @@ const AIMenuImport = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
-          <Link 
-            to="/categories" 
+          <Link
+            to={`/categories/${menuId}`}
             className="text-gray-600 hover:text-gray-800 p-2 rounded-lg hover:bg-gray-100"
           >
             <ArrowLeft size={20} />
