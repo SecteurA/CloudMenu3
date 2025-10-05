@@ -336,12 +336,18 @@ export default function RestaurantIdentity() {
                   type="url"
                   value={formData.location}
                   onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="https://maps.google.com/..."
+                  placeholder="https://www.google.com/maps/place/..."
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Lien Google Maps pour afficher la carte dans le footer
-                </p>
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-gray-700 font-medium mb-1">💡 Comment obtenir le bon lien :</p>
+                  <ol className="text-xs text-gray-600 space-y-1 ml-4 list-decimal">
+                    <li>Ouvrez Google Maps et trouvez votre restaurant</li>
+                    <li>Cliquez sur "Partager" puis "Intégrer une carte"</li>
+                    <li>Copiez le lien dans <code className="bg-white px-1 rounded">src="..."</code></li>
+                    <li>Ou utilisez directement l'URL de la page (ex: google.com/maps/place/...)</li>
+                  </ol>
+                </div>
               </div>
             </div>
           </div>
