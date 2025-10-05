@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase, Menu, Category, MenuItem, RestaurantProfile, trackMenuVisit } from '../../lib/supabase';
-import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, LayoutGrid, Smartphone } from 'lucide-react';
+import { Loader2, AlertCircle, Leaf, Flame, Menu as MenuIcon, Phone, MessageCircle, Instagram, Facebook, X, Calendar, Clock, Users, Check, Globe, ChevronDown, ChevronRight, LayoutGrid, Smartphone } from 'lucide-react';
 import QRCode from 'qrcode';
 import RestaurantFooter from './RestaurantFooter';
-import { useInterfaceTranslations } from '../../hooks/useInterfaceTranslations';
+import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
 
 const LANGUAGES = {
   fr: { name: 'Français', flag: '🇫🇷', rtl: false },
@@ -826,122 +826,130 @@ const MenuPreview = () => {
               </div>
             )}
 
-            {/* Mobile/Tablet: Hamburger menu button - only show if there are contact items */}
-            {(restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
-              <div className="hamburger-menu-container">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsMenuOpen(!isMenuOpen);
-                  }}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <MenuIcon size={24} className="text-black" />
-                </button>
-              </div>
-            )}
+            {/* Mobile/Tablet: Hamburger menu button */}
+            <div className="hamburger-menu-container">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <MenuIcon size={24} className="text-black" />
+              </button>
+            </div>
           </div>
 
-          {/* Menu déroulant */}
-          {isMenuOpen && (restaurantProfile?.telephone || restaurantProfile?.whatsapp || restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
+          {/* Hamburger dropdown menu */}
+          {isMenuOpen && (
             <div className="hamburger-menu-container absolute top-full left-0 right-0 w-full bg-white shadow-xl border-b border-gray-200 z-50 md:left-auto md:right-0 md:w-80 md:border-l">
-              <div className="px-4 py-3 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900 text-lg">Nous contacter</h3>
-              </div>
-              
-              <div className="py-1">
-                {/* Téléphone */}
-                {restaurantProfile?.telephone && (
-                  <a
-                    href={`tel:${restaurantProfile?.telephone}`}
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Phone size={18} className="text-blue-600" />
+              <div className="py-2">
+                {/* Menu Links */}
+                {allMenus.map((menuItem) => {
+                  const menuSlugPart = menuItem.slug.split('/').pop();
+                  return (
+                    <button
+                      key={menuItem.id}
+                      onClick={() => {
+                        navigate(`/m/${slug}/${menuSlugPart}?lang=${currentLanguage}`);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center flex-shrink-0">
+                          <MenuIcon size={18} className="text-orange-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {menuItem.menu_name}
+                          </div>
+                          {menuItem.description && (
+                            <div className="text-xs text-gray-500 line-clamp-1">{menuItem.description}</div>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className="text-gray-400" />
+                    </button>
+                  );
+                })}
+
+                {/* Contact Icons in one line */}
+                <div className="px-4 py-4 border-b border-gray-50">
+                  <div className="flex items-center justify-center gap-3">
+                    {/* Booking button */}
+                    <button
+                      onClick={() => {
+                        setShowReservationForm(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg shadow-sm hover:bg-orange-700 transition-all flex-1 justify-center"
+                    >
+                      <Calendar size={18} />
+                      <span className="text-sm font-medium">{getTranslation(interfaceTranslations, 'reserve', 'Réserver')}</span>
+                    </button>
+
+                    {restaurantProfile?.telephone && (
+                      <a
+                        href={`tel:${restaurantProfile.telephone}`}
+                        className="p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <Phone size={20} />
+                      </a>
+                    )}
+
+                    {restaurantProfile?.whatsapp && (
+                      <a
+                        href={formatWhatsAppLink(restaurantProfile.whatsapp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                      >
+                        <MessageCircle size={20} />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Social Icons at bottom */}
+                {(restaurantProfile?.instagram || restaurantProfile?.facebook || restaurantProfile?.tiktok) && (
+                  <div className="px-4 py-4 bg-gray-50">
+                    <div className="flex items-center justify-center gap-3">
+                      {restaurantProfile?.instagram && (
+                        <a
+                          href={restaurantProfile.instagram}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded-lg transition-all"
+                        >
+                          <Instagram size={20} />
+                        </a>
+                      )}
+
+                      {restaurantProfile?.facebook && (
+                        <a
+                          href={restaurantProfile.facebook}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-all"
+                        >
+                          <Facebook size={20} />
+                        </a>
+                      )}
+
+                      {restaurantProfile?.tiktok && (
+                        <a
+                          href={restaurantProfile.tiktok}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
+                        >
+                          <div className="w-5 h-5 bg-black rounded flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">T</span>
+                          </div>
+                        </a>
+                      )}
                     </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Téléphone</div>
-                      <div className="text-sm text-gray-600">{restaurantProfile?.telephone}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* WhatsApp */}
-                {restaurantProfile?.whatsapp && (
-                  <a
-                    href={formatWhatsAppLink(restaurantProfile?.whatsapp)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <MessageCircle size={18} className="text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">WhatsApp</div>
-                      <div className="text-sm text-gray-600">{restaurantProfile?.whatsapp}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Instagram */}
-                {restaurantProfile?.instagram && (
-                  <a
-                    href={restaurantProfile?.instagram}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-pink-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Instagram size={18} className="text-pink-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Instagram</div>
-                      <div className="text-sm text-gray-600">@{restaurantProfile?.instagram.split('/').pop()}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Facebook */}
-                {restaurantProfile?.facebook && (
-                  <a
-                    href={restaurantProfile?.facebook}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Facebook size={18} className="text-blue-700" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">Facebook</div>
-                      <div className="text-sm text-gray-600">Voir la page</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* TikTok */}
-                {restaurantProfile?.tiktok && (
-                  <a
-                    href={restaurantProfile?.tiktok}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex items-center ${isRTL() ? 'space-x-reverse' : ''} space-x-4 px-4 py-4 text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-200 border-b border-gray-50`}
-                  >
-                    <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xs font-bold">T</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">TikTok</div>
-                      <div className="text-sm text-gray-600">@{restaurantProfile?.tiktok.split('/').pop()?.replace('@', '')}</div>
-                    </div>
-                  </a>
-                )}
-                
-                {/* Message si aucun contact configuré */}
-                {!restaurantProfile?.telephone && !restaurantProfile?.whatsapp && !restaurantProfile?.instagram && !restaurantProfile?.facebook && !restaurantProfile?.tiktok && (
-                  <div className="px-4 py-8 text-gray-500 text-center">
-                    Aucune information de contact configurée
                   </div>
                 )}
               </div>
