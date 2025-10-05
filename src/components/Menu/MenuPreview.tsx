@@ -1184,7 +1184,7 @@ const MenuPreview = () => {
                                     </p>
                                   )}
 
-                                  {item.allergenes.length > 0 && (
+                                  {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                     <p className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded">
                                       Allergènes: {item.allergenes.join(', ')}
                                     </p>
@@ -1281,7 +1281,7 @@ const MenuPreview = () => {
                                   </p>
                                 )}
                                 
-                                {item.allergenes.length > 0 && (
+                                {item.allergenes && Array.isArray(item.allergenes) && item.allergenes.length > 0 && (
                                   <p className="text-xs text-gray-500 mb-4 bg-gray-50 px-3 py-1 rounded-lg">
                                     Allergènes: {item.allergenes.join(', ')}
                                   </p>
