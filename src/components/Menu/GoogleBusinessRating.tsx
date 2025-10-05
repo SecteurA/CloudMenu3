@@ -1,19 +1,15 @@
 import React from 'react';
 import { Star, ExternalLink } from 'lucide-react';
-import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
+import { getTranslation } from '../../hooks/useInterfaceTranslations';
 
 interface GoogleBusinessRatingProps {
   googleBusinessUrl: string;
   selectedLanguage: string;
+  translations: Record<string, string>;
 }
 
-export default function GoogleBusinessRating({ googleBusinessUrl, selectedLanguage }: GoogleBusinessRatingProps) {
+export default function GoogleBusinessRating({ googleBusinessUrl, selectedLanguage, translations }: GoogleBusinessRatingProps) {
   if (!googleBusinessUrl) return null;
-
-  const { translations: interfaceTranslations } = useInterfaceTranslations(
-    selectedLanguage,
-    ['leave_review', 'write_review_google']
-  );
 
   const getReviewUrl = (url: string) => {
     const reviewParam = '/review';
@@ -26,8 +22,8 @@ export default function GoogleBusinessRating({ googleBusinessUrl, selectedLangua
     return url.endsWith('/') ? `${url}review` : `${url}/review`;
   };
 
-  const title = getTranslation(interfaceTranslations, 'leave_review', 'Laissez-nous un avis');
-  const cta = getTranslation(interfaceTranslations, 'write_review_google', 'Écrire un avis sur Google');
+  const title = getTranslation(translations, 'leave_review', 'Laissez-nous un avis');
+  const cta = getTranslation(translations, 'write_review_google', 'Écrire un avis sur Google');
   const reviewUrl = getReviewUrl(googleBusinessUrl);
 
   return (
