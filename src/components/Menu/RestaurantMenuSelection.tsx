@@ -445,7 +445,11 @@ export default function RestaurantMenuSelection() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20" dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}>
+    <div
+      className="min-h-screen pb-20"
+      style={{ backgroundColor: restaurant.background_color || '#f9fafb' }}
+      dir={selectedLanguage === 'ar' ? 'rtl' : 'ltr'}
+    >
       {/* Navbar fixe */}
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 shadow-sm">
         <div className="h-16 flex items-center justify-between px-4">
