@@ -220,7 +220,9 @@ const MenuPreview = () => {
         .select('*')
         .eq('user_id', restaurantData.user_id)
         .eq('actif', true)
-        .eq('status', 'published');
+        .eq('status', 'published')
+        .order('ordre', { ascending: true })
+        .order('created_at', { ascending: true });
 
       if (menusError) {
         setError('Erreur lors du chargement des menus');
