@@ -7,6 +7,7 @@ import GoogleBusinessRating from './GoogleBusinessRating';
 import RestaurantFooter from './RestaurantFooter';
 import QRCode from 'qrcode';
 import { useInterfaceTranslations, getTranslation } from '../../hooks/useInterfaceTranslations';
+import { getColorClasses, injectCustomStyles } from '../../utils/colorUtils';
 
 const LANGUAGES: Record<string, { name: string; flag: string }> = {
   fr: { name: 'Français', flag: '🇫🇷' },
@@ -172,6 +173,14 @@ export default function RestaurantMenuSelection() {
       setLoading(false);
     }
   };
+
+  // Apply custom colors when restaurant data is loaded
+  useEffect(() => {
+    if (restaurant) {
+      const colors = getColorClasses(restaurant);
+      injectCustomStyles(colors);
+    }
+  }, [restaurant]);
 
   const allGroupedMenus: MenuGroup[] = menus.reduce((acc: MenuGroup[], menu) => {
     const existingGroup = acc.find(g => g.menu_name === menu.menu_name);

@@ -23,6 +23,10 @@ export interface RestaurantProfile {
   banner_url: string;
   logo_url: string;
   hero_background_color: string;
+  primary_color: string;
+  accent_color: string;
+  text_color: string;
+  background_color: string;
   telephone: string;
   whatsapp: string;
   instagram: string;
@@ -30,6 +34,9 @@ export interface RestaurantProfile {
   tiktok: string;
   address: string;
   hours: string;
+  google_business_url: string;
+  location: string;
+  show_footer_branding: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +49,10 @@ export interface RestaurantProfileInsert {
   banner_url?: string;
   logo_url?: string;
   hero_background_color?: string;
+  primary_color?: string;
+  accent_color?: string;
+  text_color?: string;
+  background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -49,6 +60,9 @@ export interface RestaurantProfileInsert {
   tiktok?: string;
   address?: string;
   hours?: string;
+  google_business_url?: string;
+  location?: string;
+  show_footer_branding?: boolean;
 }
 
 export interface RestaurantProfileUpdate {
@@ -58,6 +72,10 @@ export interface RestaurantProfileUpdate {
   banner_url?: string;
   logo_url?: string;
   hero_background_color?: string;
+  primary_color?: string;
+  accent_color?: string;
+  text_color?: string;
+  background_color?: string;
   telephone?: string;
   whatsapp?: string;
   instagram?: string;
@@ -65,6 +83,9 @@ export interface RestaurantProfileUpdate {
   tiktok?: string;
   address?: string;
   hours?: string;
+  google_business_url?: string;
+  location?: string;
+  show_footer_branding?: boolean;
 }
 
 // Types pour les menus

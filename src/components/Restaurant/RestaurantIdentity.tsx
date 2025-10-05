@@ -21,6 +21,10 @@ export default function RestaurantIdentity() {
     banner_url: '',
     logo_url: '',
     hero_background_color: '#f3f4f6',
+    primary_color: '#ea580c',
+    accent_color: '#f97316',
+    text_color: '#1f2937',
+    background_color: '#ffffff',
     telephone: '',
     whatsapp: '',
     instagram: '',
@@ -63,6 +67,10 @@ export default function RestaurantIdentity() {
           banner_url: data.banner_url || '',
           logo_url: data.logo_url || '',
           hero_background_color: data.hero_background_color || '#f3f4f6',
+          primary_color: data.primary_color || '#ea580c',
+          accent_color: data.accent_color || '#f97316',
+          text_color: data.text_color || '#1f2937',
+          background_color: data.background_color || '#ffffff',
           telephone: data.telephone || '',
           whatsapp: data.whatsapp || '',
           instagram: data.instagram || '',
@@ -152,6 +160,10 @@ export default function RestaurantIdentity() {
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
           hero_background_color: formData.hero_background_color,
+          primary_color: formData.primary_color,
+          accent_color: formData.accent_color,
+          text_color: formData.text_color,
+          background_color: formData.background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
@@ -181,6 +193,10 @@ export default function RestaurantIdentity() {
           banner_url: formData.banner_url,
           logo_url: formData.logo_url,
           hero_background_color: formData.hero_background_color,
+          primary_color: formData.primary_color,
+          accent_color: formData.accent_color,
+          text_color: formData.text_color,
+          background_color: formData.background_color,
           telephone: formData.telephone,
           whatsapp: formData.whatsapp,
           instagram: formData.instagram,
@@ -422,10 +438,145 @@ export default function RestaurantIdentity() {
                 )}
               </div>
 
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Palette de Couleurs</h2>
+            <p className="text-sm text-gray-600 mb-6">Personnalisez les couleurs de votre page de menu</p>
+
+            {/* Preset Color Themes */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Thèmes prédéfinis</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[
+                  { name: 'Orange Classic', primary: '#ea580c', accent: '#f97316', text: '#1f2937', bg: '#ffffff', hero: '#fff7ed' },
+                  { name: 'Rouge Passion', primary: '#dc2626', accent: '#ef4444', text: '#1f2937', bg: '#ffffff', hero: '#fef2f2' },
+                  { name: 'Vert Nature', primary: '#16a34a', accent: '#22c55e', text: '#1f2937', bg: '#ffffff', hero: '#f0fdf4' },
+                  { name: 'Bleu Océan', primary: '#2563eb', accent: '#3b82f6', text: '#1f2937', bg: '#ffffff', hero: '#eff6ff' },
+                  { name: 'Violet Royal', primary: '#7c3aed', accent: '#8b5cf6', text: '#1f2937', bg: '#ffffff', hero: '#f5f3ff' },
+                  { name: 'Rose Élégant', primary: '#db2777', accent: '#ec4899', text: '#1f2937', bg: '#ffffff', hero: '#fdf2f8' },
+                  { name: 'Sombre Chic', primary: '#f59e0b', accent: '#fbbf24', text: '#f9fafb', bg: '#111827', hero: '#1f2937' },
+                  { name: 'Minimaliste', primary: '#374151', accent: '#6b7280', text: '#111827', bg: '#ffffff', hero: '#f9fafb' }
+                ].map((theme) => (
+                  <button
+                    key={theme.name}
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        primary_color: theme.primary,
+                        accent_color: theme.accent,
+                        text_color: theme.text,
+                        background_color: theme.bg,
+                        hero_background_color: theme.hero
+                      }));
+                    }}
+                    className="p-3 border-2 border-gray-200 rounded-lg hover:border-orange-500 transition-colors text-left"
+                  >
+                    <div className="flex gap-1.5 mb-2">
+                      <div className="w-6 h-6 rounded" style={{ backgroundColor: theme.primary }}></div>
+                      <div className="w-6 h-6 rounded" style={{ backgroundColor: theme.accent }}></div>
+                      <div className="w-6 h-6 rounded border border-gray-200" style={{ backgroundColor: theme.bg }}></div>
+                    </div>
+                    <p className="text-xs font-medium text-gray-700">{theme.name}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Color Pickers */}
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Couleur de fond du hero
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur Principale</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.primary_color}
+                    onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.primary_color}
+                      onChange={(e) => handleInputChange('primary_color', e.target.value)}
+                      placeholder="#ea580c"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Utilisée pour les boutons et liens principaux</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur d'Accentuation</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.accent_color}
+                    onChange={(e) => handleInputChange('accent_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.accent_color}
+                      onChange={(e) => handleInputChange('accent_color', e.target.value)}
+                      placeholder="#f97316"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Utilisée pour les hovers et éléments secondaires</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur du Texte</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.text_color}
+                    onChange={(e) => handleInputChange('text_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.text_color}
+                      onChange={(e) => handleInputChange('text_color', e.target.value)}
+                      placeholder="#1f2937"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Couleur principale du texte</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur de Fond</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.background_color}
+                    onChange={(e) => handleInputChange('background_color', e.target.value)}
+                    className="w-16 h-16 border-2 border-gray-300 rounded-lg cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={formData.background_color}
+                      onChange={(e) => handleInputChange('background_color', e.target.value)}
+                      placeholder="#ffffff"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Couleur de fond de la page</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Couleur de Fond du Hero</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="color"
@@ -441,7 +592,7 @@ export default function RestaurantIdentity() {
                       placeholder="#f3f4f6"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500 font-mono"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Couleur d'arrière-plan pour la section hero</p>
+                    <p className="text-xs text-gray-500 mt-1">Couleur de fond de la section hero en haut</p>
                   </div>
                 </div>
               </div>
