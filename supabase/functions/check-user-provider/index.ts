@@ -30,13 +30,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Create admin client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get user by email using admin client
     const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers();
 
     if (error) {
@@ -52,7 +50,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Find user with this email
     const user = users.find(u => u.email === email);
 
     if (!user) {
@@ -67,7 +64,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Check the provider
     const provider = user.app_metadata?.provider || 'email';
 
     return new Response(
